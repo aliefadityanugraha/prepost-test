@@ -446,45 +446,6 @@ const downloadPDF = async () => {
     isGeneratingPdf.value = false
   }
 }
-
-  isGeneratingPdf.value = true
-  pdfNotification.value = null
-
-  try {
-    // Tangkap visual area laporan dashboard
-    const canvas = await html2canvas(reportElement, {
-      scale: 2, // Kualitas tinggi
-      useCORS: true,
-      backgroundColor: '#f8f8f2',
-      logging: false,
-    })
-
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF('p', 'mm', 'a4')
-
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-
-    // Tambahkan gambar ke PDF (margin padding 0 atau disesuaikan)
-    pdf.addImage(imgData, 'PNG', 0, 5, pdfWidth, pdfHeight)
-    
-    const fileName = `Laporan_PrePostTest_Workshop_GoogleSites_${new Date().toISOString().slice(0, 10)}.pdf`
-    pdf.save(fileName)
-
-    pdfNotification.value = {
-      type: 'success',
-      message: `Laporan PDF berhasil di-generate dan diunduh: "${fileName}"!`,
-    }
-  } catch (err) {
-    console.error('Gagal generate PDF:', err)
-    pdfNotification.value = {
-      type: 'error',
-      message: 'Gagal membuat file PDF: ' + err.message,
-    }
-  } finally {
-    isGeneratingPdf.value = false
-  }
-}
 </script>
 
 <template>
@@ -677,6 +638,357 @@ const downloadPDF = async () => {
               </tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SEKSI ANALISIS RATA-RATA JAWABAN PERSOAL (ITEM ANALYSIS) -->
+      <!-- ======================================================== -->
+      <section class="bg-white border-3 border-neo-black p-6 sm:p-8 shadow-neo space-y-6">
+        <!-- Header & Nav Tabs -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-3 border-neo-black pb-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="w-3.5 h-3.5 bg-neo-pink border-2 border-neo-black"></span>
+              <span class="text-xs font-mono font-bold uppercase bg-neo-yellow px-2 py-0.5 border border-neo-black">
+                ITEM ANALYSIS • EVALUASI SOAL
+              </span>
+            </div>
+            <h3 class="font-display text-3xl sm:text-4xl uppercase tracking-wider text-neo-black">
+              Analisis Rata-Rata Jawaban Per Butir Soal
+            </h3>
+            <p class="text-xs sm:text-sm font-medium text-neo-black/80">
+              Tinjauan mendalam persentase ketercapaian, rerata poin, dan sebaran respon peserta pada masing-masing butir instrumen workshop.
+            </p>
+          </div>
+
+          <!-- Tab Pemilih Sesi & Komparasi -->
+          <div class="flex items-center gap-1.5 border-3 border-neo-black bg-neo-bg p-1.5 flex-wrap self-start md:self-auto">
+            <button
+              type="button"
+              @click="activeItemTab = 'Pre-Test'"
+              :class="[
+                'px-3.5 py-1.5 font-display text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent',
+                activeItemTab === 'Pre-Test' ? 'bg-neo-pink text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
+              ]"
+            >
+              🌸 Pre-Test
+            </button>
+            <button
+              type="button"
+              @click="activeItemTab = 'Post-Test'"
+              :class="[
+                'px-3.5 py-1.5 font-display text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent',
+                activeItemTab === 'Post-Test' ? 'bg-neo-blue text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
+              ]"
+            >
+              🌊 Post-Test
+            </button>
+            <button
+              type="button"
+              @click="activeItemTab = 'Komparasi'"
+              :class="[
+                'px-3.5 py-1.5 font-display text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent',
+                activeItemTab === 'Komparasi' ? 'bg-neo-yellow text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
+              ]"
+            >
+              ⚡ Gain Pre vs Post
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Kategori & Info Status (Untuk Mode Pre/Post) -->
+        <div v-if="activeItemTab !== 'Komparasi'" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <!-- Filter Kategori -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-bold uppercase shrink-0">Filter Kategori:</span>
+            <button
+              v-for="kat in ['Semua', 'Pilihan Ganda', 'Praktik']"
+              :key="kat"
+              @click="itemKategoriFilter = kat"
+              :class="[
+                'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer',
+                itemKategoriFilter === kat ? 'bg-neo-black text-neo-bg shadow-neo' : 'bg-neo-bg hover:bg-white'
+              ]"
+            >
+              {{ kat }}
+            </button>
+          </div>
+
+          <!-- Status Sumber Data -->
+          <div class="text-xs font-mono font-bold">
+            <span v-if="itemAnalysisData[0]?.isSampleData" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-yellow border-2 border-neo-black">
+              <span>⚠️</span>
+              <span>Data Rujukan Standar (0 Submisi Riil)</span>
+            </span>
+            <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-green border-2 border-neo-black">
+              <span>✓</span>
+              <span>Berdasarkan {{ itemAnalysisData[0]?.totalPeserta }} Peserta Riil</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 3 Highlight Metrics Card -->
+        <div v-if="activeItemTab !== 'Komparasi'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-neo-bg border-3 border-neo-black p-4 shadow-neo">
+            <span class="text-xs font-mono font-bold uppercase text-neo-black/60 block">Rata-Rata Ketercapaian Butir</span>
+            <div class="font-display text-4xl text-neo-black mt-1 leading-none">{{ itemSummaryStats.meanRate }}%</div>
+            <span class="text-[11px] font-bold text-neo-black/70 mt-1 block">Rerata Seluruh Butir Soal {{ activeItemTab }}</span>
+          </div>
+
+          <div class="bg-neo-green/30 border-3 border-neo-black p-4 shadow-neo">
+            <span class="text-xs font-mono font-bold uppercase text-neo-black/70 block">Indikator Paling Dikuasai</span>
+            <div class="font-display text-3xl text-neo-black mt-1 leading-none">
+              Soal #{{ itemSummaryStats.highest?.nomor }} ({{ itemSummaryStats.highest?.percentage }}%)
+            </div>
+            <span class="text-[11px] font-bold text-neo-black/70 mt-1 truncate block">
+              {{ itemSummaryStats.highest?.pertanyaan }}
+            </span>
+          </div>
+
+          <div class="bg-neo-pink/30 border-3 border-neo-black p-4 shadow-neo">
+            <span class="text-xs font-mono font-bold uppercase text-neo-black/70 block">Butuh Penguatan / Terendah</span>
+            <div class="font-display text-3xl text-neo-black mt-1 leading-none">
+              Soal #{{ itemSummaryStats.lowest?.nomor }} ({{ itemSummaryStats.lowest?.percentage }}%)
+            </div>
+            <span class="text-[11px] font-bold text-neo-black/70 mt-1 truncate block">
+              {{ itemSummaryStats.lowest?.pertanyaan }}
+            </span>
+          </div>
+        </div>
+
+        <!-- GRID KARTU DETAIL PERSOAL (Untuk Pre-Test & Post-Test) -->
+        <div v-if="activeItemTab !== 'Komparasi'" class="space-y-4">
+          <div
+            v-for="soal in filteredItemAnalysis"
+            :key="soal.id"
+            class="border-3 border-neo-black bg-neo-bg p-5 shadow-neo space-y-4 transition-all"
+          >
+            <!-- Bar Atas Kartu Soal -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-neo-black pb-3">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span
+                  :class="[
+                    'px-3 py-1 font-display text-xl uppercase tracking-wider border-2 border-neo-black shadow-neo',
+                    soal.jenis_tes === 'Pre-Test' ? 'bg-neo-pink text-neo-black' : 'bg-neo-blue text-neo-black'
+                  ]"
+                >
+                  {{ soal.jenis_tes }} #{{ soal.nomor }}
+                </span>
+                <span class="bg-neo-black text-neo-bg px-2.5 py-0.5 font-mono text-xs font-bold uppercase">
+                  {{ soal.kategori }}
+                </span>
+                <span v-if="soal.kategori === 'Pilihan Ganda'" class="bg-neo-yellow border border-neo-black px-2 py-0.5 font-mono text-xs font-bold">
+                  Kunci: <strong>{{ soal.kunci_jawaban }}</strong>
+                </span>
+              </div>
+
+              <!-- Skor Rata-rata & Status Badge -->
+              <div class="flex items-center gap-2">
+                <span :class="['px-2.5 py-1 font-mono text-xs font-bold uppercase border-2 border-neo-black shadow-neo', soal.statusBadgeColor]">
+                  {{ soal.statusLabel }}
+                </span>
+                <button
+                  type="button"
+                  @click="toggleExpandQuestion(soal.id)"
+                  class="px-2.5 py-1 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-yellow transition-all shadow-neo cursor-pointer"
+                >
+                  {{ expandedQuestionId === soal.id ? 'Tutup Opsi ▲' : 'Rincian Opsi ▼' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Teks Pertanyaan -->
+            <p class="font-bold text-sm sm:text-base text-neo-black leading-snug">
+              {{ soal.pertanyaan }}
+            </p>
+
+            <!-- Visual Progress Ketercapaian -->
+            <div class="space-y-1.5 bg-white border-2 border-neo-black p-3.5 shadow-neo">
+              <div class="flex items-center justify-between text-xs font-mono font-bold flex-wrap gap-1">
+                <span>RATA-RATA KEBERHASILAN (BENAR / BISA):</span>
+                <span class="text-sm font-bold">
+                  {{ soal.percentage }}% (Rerata: {{ soal.rataPoin }} / {{ soal.maxPoin }} Poin)
+                </span>
+              </div>
+
+              <!-- Neo Brutalism Progress Bar -->
+              <div class="w-full h-5 bg-neo-bg border-2 border-neo-black overflow-hidden relative">
+                <div
+                  :style="{ width: `${soal.percentage}%` }"
+                  :class="[
+                    'h-full border-r-2 border-neo-black transition-all duration-500',
+                    soal.percentage >= 80 ? 'bg-neo-green' : soal.percentage >= 60 ? 'bg-neo-blue' : 'bg-neo-pink'
+                  ]"
+                ></div>
+              </div>
+            </div>
+
+            <!-- Breakdown Distribusi Opsi Jawaban (Expandable / Toggleable) -->
+            <div v-if="expandedQuestionId === soal.id" class="pt-2 border-t-2 border-neo-black/20 space-y-3">
+              <span class="text-xs font-mono font-bold uppercase text-neo-black/70 block">
+                SEBARAN DISTRIBUSI PILIHAN JAWABAN PESERTA:
+              </span>
+
+              <!-- Opsi Pilihan Ganda -->
+              <div v-if="soal.kategori === 'Pilihan Ganda'" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div
+                  v-for="(teksOpsi, huruf) in soal.opsi"
+                  :key="huruf"
+                  :class="[
+                    'p-3 border-2 border-neo-black text-xs space-y-1.5 transition-all',
+                    huruf === soal.kunci_jawaban ? 'bg-neo-green/30 font-bold border-neo-black' : 'bg-white'
+                  ]"
+                >
+                  <div class="flex items-center justify-between">
+                    <span class="font-mono font-bold text-sm">
+                      [{{ huruf }}] {{ huruf === soal.kunci_jawaban ? '✓ Kunci Benar' : '' }}
+                    </span>
+                    <span class="font-mono font-bold bg-neo-black text-white px-1.5 py-0.5 text-[11px]">
+                      {{ soal.opsiDistribution[huruf] }} Respon ({{ soal.totalPeserta > 0 ? Math.round((soal.opsiDistribution[huruf] / soal.totalPeserta) * 100) : 0 }}%)
+                    </span>
+                  </div>
+                  <p class="text-neo-black/80 font-medium leading-tight">
+                    {{ teksOpsi }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Opsi Praktik / Penilaian Diri -->
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="p-3 border-2 border-neo-black bg-neo-green/30 space-y-1 text-xs">
+                  <div class="flex items-center justify-between font-bold font-mono">
+                    <span>👍 Menjawab 'Bisa'</span>
+                    <span class="bg-neo-black text-white px-2 py-0.5">{{ soal.praktikDistribution['Bisa'] }} Respon</span>
+                  </div>
+                  <p class="font-medium text-neo-black/80">Peserta menguasai indikator portofolio ini.</p>
+                </div>
+
+                <div class="p-3 border-2 border-neo-black bg-neo-pink/30 space-y-1 text-xs">
+                  <div class="flex items-center justify-between font-bold font-mono">
+                    <span>👎 Menjawab 'Belum Bisa'</span>
+                    <span class="bg-neo-black text-white px-2 py-0.5">{{ soal.praktikDistribution['Belum Bisa'] }} Respon</span>
+                  </div>
+                  <p class="font-medium text-neo-black/80">Peserta memerlukan pendampingan materi lebih lanjut.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABEL MATRIKS LENGKAP ANALISIS BUTIR SOAL (Included in Printable Area) -->
+        <div v-if="activeItemTab !== 'Komparasi'" class="space-y-3 pt-4 border-t-3 border-neo-black">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h4 class="font-display text-2xl uppercase tracking-wider text-neo-black">
+              Tabel Matriks Ketercapaian Butir Soal ({{ activeItemTab }})
+            </h4>
+            <span class="text-xs font-mono font-bold text-neo-black/60">
+              Format Standar Laporan Evaluasi Pelatihan
+            </span>
+          </div>
+
+          <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo">
+            <table class="w-full border-collapse text-left text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-neo-black text-neo-bg">
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-12">No</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase">Teks Pertanyaan / Indikator</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-28">Kategori</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-20">Kunci</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-28">Ketercapaian</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-24">Rerata Skor</th>
+                  <th class="p-3 font-display text-sm uppercase text-center w-36">Kategori Mutu</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y-2 divide-neo-black font-medium">
+                <tr
+                  v-for="item in filteredItemAnalysis"
+                  :key="item.id"
+                  class="hover:bg-neo-bg transition-colors"
+                >
+                  <td class="p-3 border-r-2 border-neo-black font-mono font-bold text-center bg-neo-yellow/30">
+                    #{{ item.nomor }}
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black font-medium">
+                    {{ item.pertanyaan }}
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono text-xs">
+                    {{ item.kategori }}
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono font-bold">
+                    {{ item.kunci_jawaban || '-' }}
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono font-bold">
+                    {{ item.percentage }}%
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono font-bold">
+                    {{ item.rataPoin }} / {{ item.maxPoin }}
+                  </td>
+                  <td class="p-3 text-center">
+                    <span :class="['px-2 py-0.5 border border-neo-black font-mono text-[11px] font-bold uppercase inline-block', item.statusBadgeColor]">
+                      {{ item.statusLabel.split(' ')[0] }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MODE TAB 3: TABEL MATRIKS KOMPARASI PRE VS POST (GAIN PER BUTIR INDIKATOR) -->
+        <div v-else class="space-y-4">
+          <div class="border-l-4 border-neo-pink bg-white p-4 border-3 border-neo-black shadow-neo">
+            <h4 class="font-display text-2xl uppercase tracking-wider text-neo-black">
+              Matriks Peningkatan Capaian Indikator (Pre vs Post)
+            </h4>
+            <p class="text-xs sm:text-sm font-medium text-neo-black/80">
+              Membandingkan peningkatan rata-rata persentase keberhasilan siswa sebelum dan sesudah workshop untuk setiap butir kompetensi Google Sites.
+            </p>
+          </div>
+
+          <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo">
+            <table class="w-full border-collapse text-left text-xs sm:text-sm">
+              <thead>
+                <tr class="bg-neo-black text-neo-bg">
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-12">No</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase">Kompetensi Indikator Butir</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-28">Kategori</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center bg-neo-pink text-neo-black w-24">Pre-Test</th>
+                  <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center bg-neo-blue text-neo-black w-24">Post-Test</th>
+                  <th class="p-3 font-display text-sm uppercase text-center bg-neo-green text-neo-black w-28">Gain Peningkatan</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y-2 divide-neo-black font-medium">
+                <tr
+                  v-for="k in komparasiButirList"
+                  :key="k.nomor"
+                  class="hover:bg-neo-bg transition-colors"
+                >
+                  <td class="p-3 border-r-2 border-neo-black font-mono font-bold text-center bg-neo-yellow/30">
+                    #{{ k.nomor }}
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black space-y-1">
+                    <p class="font-bold text-xs">{{ k.pertanyaanPost }}</p>
+                    <p class="text-[11px] text-neo-black/60 italic">Pre: {{ k.pertanyaanPre }}</p>
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono text-xs">
+                    {{ k.kategori }}
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono font-bold">
+                    {{ k.preRate }}%
+                  </td>
+                  <td class="p-3 border-r-2 border-neo-black text-center font-mono font-bold">
+                    {{ k.postRate }}%
+                  </td>
+                  <td class="p-3 text-center font-mono font-bold bg-neo-green/10 text-neo-black">
+                    <span class="inline-block px-2 py-0.5 bg-neo-green border border-neo-black text-xs">
+                      +{{ k.deltaGain }}%
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>
