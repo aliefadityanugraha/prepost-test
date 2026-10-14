@@ -17,13 +17,13 @@
       linear-gradient(to bottom, rgba(40, 42, 54, 0.08) 1px, transparent 1px);
   }
 
-  /* Helper class untuk komponen Neo Brutalism */
+  /* Helper class untuk komponen Neo Brutalism (Soft / Rounded Neo Brutalism) */
   .neo-box {
-    @apply border-3 border-neo-black shadow-neo;
+    @apply border-3 border-neo-black shadow-neo rounded-2xl;
   }
 
   .neo-button {
-    @apply border-3 border-neo-black shadow-neo hover:shadow-neo-hover hover:-translate-x-0.5 hover:-translate-y-0.5 active:shadow-neo-active active:translate-x-1 active:translate-y-1 transition-all duration-150 font-bold;
+    @apply border-3 border-neo-black shadow-neo hover:shadow-neo-hover hover:-translate-x-0.5 hover:-translate-y-0.5 active:shadow-neo-active active:translate-x-1 active:translate-y-1 transition-all duration-150 font-bold rounded-xl;
   }
 }
 
@@ -49,3 +49,12 @@
     'opsz' 24;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

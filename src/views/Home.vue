@@ -9,10 +9,29 @@ const userStore = useUserStore();
 const inputNama = ref(userStore.nama || "");
 const inputKelas = ref(userStore.kelas || "");
 const formError = ref("");
+const kelasInputRef = ref(null);
 
 onMounted(() => {
   userStore.initPengaturanListener();
+  // Sinkronkan nama dan kelas dari store jika tersedia
+  if (userStore.nama && !inputNama.value) inputNama.value = userStore.nama;
+  if (userStore.kelas && !inputKelas.value) inputKelas.value = userStore.kelas;
 });
+
+const handleEnterNama = () => {
+  if (kelasInputRef.value) {
+    kelasInputRef.value.focus();
+  }
+};
+
+const clearInput = (field) => {
+  if (field === 'nama') inputNama.value = '';
+  if (field === 'kelas') inputKelas.value = '';
+};
+
+const goToPreviousResult = () => {
+  router.push('/result');
+};
 
 const isTestClosed = computed(() => {
   return userStore.status_tes_aktif === "Ditutup";
@@ -105,7 +124,7 @@ const handleStartTest = () => {
     <header class="text-center space-y-3 sm:space-y-4 px-1">
       <!-- Badge Header Dinamis -->
       <div
-        class="inline-flex items-center gap-2 border-3 border-neo-black px-3 sm:px-4 py-1 sm:py-1.5 font-bold font-mono text-[10px] sm:text-xs uppercase tracking-wider shadow-neo transition-all transform -rotate-1 hover:rotate-0 max-w-full truncate"
+        class="inline-flex items-center gap-2 border-3 border-neo-black rounded-xl px-3 sm:px-4 py-1 sm:py-1.5 font-bold font-mono text-[10px] sm:text-xs uppercase tracking-wider shadow-neo transition-all transform -rotate-1 hover:rotate-0 max-w-full truncate"
         :class="themeConfig.badgeClass"
       >
         <span
@@ -131,7 +150,7 @@ const handleStartTest = () => {
     </header>
 
     <!-- Main Card Form (Neo Brutalism Retro Window Style) -->
-    <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden">
+    <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden rounded-2xl">
       <!-- Window Title Bar -->
       <div
         class="bg-neo-black text-neo-bg px-3.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between border-b-3 border-neo-black"
@@ -160,10 +179,36 @@ const handleStartTest = () => {
       </div>
 
       <div class="p-4 sm:p-8 md:p-10 space-y-5 sm:space-y-6">
+        <!-- Banner Pintas Jika Ada Hasil Evaluasi Sebelumnya di Sesi Ini -->
+        <div
+          v-if="userStore.lastResult"
+          class="p-3.5 sm:p-4 bg-neo-yellow border-3 border-neo-black rounded-xl shadow-neo flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-2xl text-neo-black shrink-0">history_edu</span>
+            <div>
+              <p class="font-bold text-xs uppercase tracking-wider text-neo-black">
+                Riwayat Terakhir Tersimpan:
+              </p>
+              <p class="text-xs text-neo-black/85">
+                {{ userStore.lastResult.nama }} ({{ userStore.lastResult.kelas }}) • <strong>{{ userStore.lastResult.jenis_tes }}: {{ userStore.lastResult.skor_total }}/100 Poin</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="goToPreviousResult"
+            class="px-3 py-1.5 bg-neo-pink text-neo-black border-2 border-neo-black rounded-lg font-mono font-bold text-xs uppercase shadow-[2px_2px_0px_0px_#282a36] hover:bg-white transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <span>Lihat Hasil Ujian</span>
+            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+          </button>
+        </div>
+
         <!-- Banner Khusus Ketika Sesi Ditutup -->
         <div
           v-if="isTestClosed"
-          class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black shadow-neo flex items-start gap-3"
+          class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black rounded-xl shadow-neo flex items-start gap-3"
         >
           <span class="material-symbols-outlined text-2xl sm:text-3xl shrink-0">lock</span>
           <div class="space-y-1">
@@ -185,7 +230,7 @@ const handleStartTest = () => {
         <!-- Error Alert -->
         <div
           v-if="formError"
-          class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black font-bold text-xs shadow-neo flex items-center gap-2"
+          class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black rounded-xl font-bold text-xs shadow-neo flex items-center gap-2"
         >
           <span class="material-symbols-outlined text-base">warning</span>
           <span>{{ formError }}</span>
@@ -207,14 +252,27 @@ const handleStartTest = () => {
                 >Sesuai Presensi</span
               >
             </label>
-            <input
-              id="nama"
-              v-model="inputNama"
-              type="text"
-              placeholder="Contoh: Budi Pratama"
-              required
-              class="w-full px-3.5 py-3 sm:px-4 sm:py-3.5 bg-neo-bg border-3 border-neo-black text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
-            />
+            <div class="relative">
+              <input
+                id="nama"
+                v-model="inputNama"
+                type="text"
+                placeholder="Contoh: Budi Pratama"
+                required
+                autocomplete="name"
+                @keydown.enter.prevent="handleEnterNama"
+                class="w-full px-3.5 py-3 sm:px-4 sm:py-3.5 pr-10 bg-neo-bg border-3 border-neo-black rounded-xl text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
+              />
+              <button
+                v-if="inputNama"
+                type="button"
+                @click="clearInput('nama')"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-neo-black text-white text-xs flex items-center justify-center hover:bg-neo-pink hover:text-neo-black transition-colors"
+                title="Hapus nama"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <!-- Input Kelas -->
@@ -232,14 +290,27 @@ const handleStartTest = () => {
                 >Contoh: XII RPL 1</span
               >
             </label>
-            <input
-              id="kelas"
-              v-model="inputKelas"
-              type="text"
-              placeholder="Contoh: XII RPL 1 / Kelompok A"
-              required
-              class="w-full px-3.5 py-3 sm:px-4 sm:py-3.5 bg-neo-bg border-3 border-neo-black text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
-            />
+            <div class="relative">
+              <input
+                id="kelas"
+                ref="kelasInputRef"
+                v-model="inputKelas"
+                type="text"
+                placeholder="Contoh: XII RPL 1 / Kelompok A"
+                required
+                autocomplete="organization"
+                class="w-full px-3.5 py-3 sm:px-4 sm:py-3.5 pr-10 bg-neo-bg border-3 border-neo-black rounded-xl text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
+              />
+              <button
+                v-if="inputKelas"
+                type="button"
+                @click="clearInput('kelas')"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-neo-black text-white text-xs flex items-center justify-center hover:bg-neo-pink hover:text-neo-black transition-colors"
+                title="Hapus kelas"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <!-- Tombol Aksi Utama -->
@@ -248,7 +319,7 @@ const handleStartTest = () => {
               type="submit"
               :disabled="isTestClosed || !isFormValid"
               :class="[
-                'w-full py-3.5 sm:py-4 px-4 sm:px-6 text-center font-display text-lg sm:text-2xl md:text-3xl uppercase tracking-wider border-3 border-neo-black transition-all duration-150 flex items-center justify-center gap-2 sm:gap-3',
+                'w-full py-3.5 sm:py-4 px-4 sm:px-6 text-center font-display text-lg sm:text-2xl md:text-3xl uppercase tracking-wider border-3 border-neo-black rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 sm:gap-3',
                 isTestClosed || !isFormValid
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-60'
                   : `${themeConfig.buttonClass} shadow-neo hover:shadow-neo-hover active:shadow-neo-active hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 cursor-pointer`,

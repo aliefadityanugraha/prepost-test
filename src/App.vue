@@ -1,17 +1,27 @@
 <script setup>
 import { RouterView } from "vue-router";
 import { useUserStore } from "./stores/userStore";
-import { onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 
 const userStore = useUserStore();
+const isScrolled = ref(false);
 
 const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 300;
+};
+
 onMounted(() => {
   // Inisialisasi realtime listener status tes
   userStore.initPengaturanListener();
+  window.addEventListener("scroll", handleScroll, { passive: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener("scroll", handleScroll);
 });
 </script>
 
@@ -83,7 +93,7 @@ onMounted(() => {
           class="flex items-center gap-2.5 sm:gap-3 group shrink min-w-0"
         >
           <div
-            class="w-10 h-10 sm:w-12 sm:h-12 bg-neo-yellow border-3 border-neo-black shadow-neo flex items-center justify-center font-display text-2xl sm:text-3xl text-neo-black group-hover:rotate-6 group-hover:scale-105 transition-all shrink-0"
+            class="w-10 h-10 sm:w-12 sm:h-12 bg-neo-yellow border-3 border-neo-black rounded-xl shadow-neo flex items-center justify-center font-display text-2xl sm:text-3xl text-neo-black group-hover:rotate-6 group-hover:scale-105 transition-all shrink-0"
           >
             GS
           </div>
@@ -95,7 +105,7 @@ onMounted(() => {
                 Pre & Post Test
               </span>
               <span
-                class="hidden md:inline-block bg-neo-pink text-neo-black border-2 border-neo-black px-1.5 py-0.2 font-mono text-[9px] font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_#282a36]"
+                class="hidden md:inline-block bg-neo-pink text-neo-black border-2 border-neo-black rounded-md px-1.5 py-0.2 font-mono text-[9px] font-black uppercase tracking-wider shadow-[2px_2px_0px_0px_#282a36]"
               >
                 Workshop
               </span>
@@ -112,7 +122,7 @@ onMounted(() => {
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           <div
             v-if="userStore.nama"
-            class="hidden lg:flex items-center gap-2 border-2 border-neo-black bg-neo-bg px-3 py-1.5 text-xs font-bold font-mono shadow-neo"
+            class="hidden lg:flex items-center gap-2 border-2 border-neo-black bg-neo-bg rounded-xl px-3 py-1.5 text-xs font-bold font-mono shadow-neo"
           >
             <span class="material-symbols-outlined text-sm text-neo-black"
               >account_circle</span
@@ -193,7 +203,7 @@ onMounted(() => {
           <div class="md:col-span-5 space-y-3.5">
             <div class="flex items-center gap-3">
               <div
-                class="w-11 h-11 sm:w-12 sm:h-12 bg-neo-yellow border-3 border-neo-bg shadow-[3px_3px_0px_0px_#f8f8f2] flex items-center justify-center font-display text-2xl text-neo-black shrink-0"
+                class="w-11 h-11 sm:w-12 sm:h-12 bg-neo-yellow border-3 border-neo-bg rounded-xl shadow-[3px_3px_0px_0px_#f8f8f2] flex items-center justify-center font-display text-2xl text-neo-black shrink-0"
               >
                 GS
               </div>
@@ -213,15 +223,15 @@ onMounted(() => {
 
             <!-- Retro Pill Badges -->
             <div class="flex flex-wrap gap-2 pt-1">
-              <span class="inline-flex items-center gap-1 bg-neo-pink text-neo-black border-2 border-neo-bg px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase shadow-[2px_2px_0px_0px_#f8f8f2]">
+              <span class="inline-flex items-center gap-1 bg-neo-pink text-neo-black border-2 border-neo-bg rounded-lg px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase shadow-[2px_2px_0px_0px_#f8f8f2]">
                 <span class="material-symbols-outlined text-[13px]">palette</span>
                 Google Sites
               </span>
-              <span class="inline-flex items-center gap-1 bg-neo-blue text-neo-black border-2 border-neo-bg px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase shadow-[2px_2px_0px_0px_#f8f8f2]">
+              <span class="inline-flex items-center gap-1 bg-neo-blue text-neo-black border-2 border-neo-bg rounded-lg px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase shadow-[2px_2px_0px_0px_#f8f8f2]">
                 <span class="material-symbols-outlined text-[13px]">verified</span>
                 Proof of Work
               </span>
-              <span class="inline-flex items-center gap-1 bg-neo-green text-neo-black border-2 border-neo-bg px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase shadow-[2px_2px_0px_0px_#f8f8f2]">
+              <span class="inline-flex items-center gap-1 bg-neo-green text-neo-black border-2 border-neo-bg rounded-lg px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase shadow-[2px_2px_0px_0px_#f8f8f2]">
                 <span class="material-symbols-outlined text-[13px]">trending_up</span>
                 N-Gain Score
               </span>
@@ -295,12 +305,12 @@ onMounted(() => {
             </div>
 
             <!-- Card Status Sesi Aktif -->
-            <div class="bg-white/5 border-2 border-neo-bg/30 p-3.5 space-y-2.5">
+            <div class="bg-white/5 border-2 border-neo-bg/30 rounded-xl p-3.5 space-y-2.5">
               <div class="flex items-center justify-between">
                 <span class="text-[11px] font-mono uppercase text-neo-bg/70">Sesi Ujian Aktif:</span>
                 <span
                   :class="[
-                    'px-2 py-0.5 text-[11px] font-mono font-bold uppercase border-2 border-neo-black',
+                    'px-2 py-0.5 text-[11px] font-mono font-bold uppercase border-2 border-neo-black rounded-md',
                     userStore.status_tes_aktif === 'Pre-Test' ? 'bg-neo-pink text-neo-black' :
                     userStore.status_tes_aktif === 'Post-Test' ? 'bg-neo-blue text-neo-black' :
                     'bg-white text-neo-black'
@@ -340,18 +350,28 @@ onMounted(() => {
             <span class="hidden sm:inline text-neo-bg/40">•</span>
             <span class="text-neo-bg/60">Hak Cipta Dilindungi</span>
           </div>
-
-          <!-- Tombol Ke Atas (Smooth Scroll) -->
-          <button
-            @click="scrollToTop"
-            class="px-3 py-1.5 bg-neo-yellow text-neo-black border-2 border-neo-bg font-bold font-mono text-[11px] uppercase tracking-wider shadow-[2px_2px_0px_0px_#f8f8f2] hover:bg-white hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer flex items-center gap-1 shrink-0"
-            title="Kembali ke bagian atas halaman"
-          >
-            <span class="material-symbols-outlined text-sm">arrow_upward</span>
-            <span>Ke Atas</span>
-          </button>
         </div>
       </div>
     </footer>
+
+    <!-- Floating Back to Top Neo-Brutalist Button -->
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0 translate-y-4 scale-90"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-4 scale-90"
+    >
+      <button
+        v-show="isScrolled"
+        @click="scrollToTop"
+        class="fixed bottom-5 right-5 z-50 p-2.5 sm:p-3 bg-neo-yellow text-neo-black border-3 border-neo-black rounded-xl shadow-neo hover:shadow-neo-hover hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center gap-1.5 font-bold font-mono text-xs uppercase"
+        title="Kembali ke atas"
+      >
+        <span class="material-symbols-outlined text-lg sm:text-xl">arrow_upward</span>
+        <span class="hidden sm:inline">Ke Atas</span>
+      </button>
+    </transition>
   </div>
 </template>

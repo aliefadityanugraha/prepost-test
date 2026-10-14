@@ -40,6 +40,32 @@ onUnmounted(() => {
   }
 })
 
+// Helper untuk normalisasi nilai evaluasi jika ada data lama melebihi 100
+const sanitizeEvaluasiItem = (item) => {
+  let skor_total = Number(item.skor_total) || 0
+  let skor_pg = Number(item.skor_pg) || 0
+  let skor_praktik = Number(item.skor_praktik) || 0
+  const total_pg = Number(item.total_pg) || 15
+  const total_praktik = Number(item.total_praktik) || 5
+
+  if (skor_total > 100 || skor_pg > 70 || skor_praktik > 30) {
+    const benar_pg = item.benar_pg !== undefined ? Number(item.benar_pg) : Math.min(total_pg, Math.round(skor_pg / 10))
+    const bisa_praktik = item.bisa_praktik !== undefined ? Number(item.bisa_praktik) : Math.min(total_praktik, Math.round(skor_praktik / 6))
+    skor_pg = Math.min(70, Math.round((benar_pg / total_pg) * 70))
+    skor_praktik = Math.min(30, Math.round((bisa_praktik / total_praktik) * 30))
+    skor_total = Math.min(100, Math.max(0, skor_pg + skor_praktik))
+  }
+
+  return {
+    ...item,
+    skor_pg,
+    skor_praktik,
+    skor_total: Math.min(100, Math.max(0, skor_total)),
+    total_pg,
+    total_praktik,
+  }
+}
+
 // Realtime sync ke collection 'evaluasi_peserta'
 const initRealtimeEvaluasi = () => {
   isLoading.value = true
@@ -49,7 +75,7 @@ const initRealtimeEvaluasi = () => {
       colRef,
       (snapshot) => {
         const items = []
-        snapshot.forEach((d) => items.push({ id: d.id, ...d.data() }))
+        snapshot.forEach((d) => items.push(sanitizeEvaluasiItem({ id: d.id, ...d.data() })))
         listEvaluasi.value = items
         isLoading.value = false
       },
@@ -69,7 +95,7 @@ const fetchEvaluasi = async () => {
   try {
     const snap = await getDocs(collection(db, 'evaluasi_peserta'))
     const items = []
-    snap.forEach((d) => items.push({ id: d.id, ...d.data() }))
+    snap.forEach((d) => items.push(sanitizeEvaluasiItem({ id: d.id, ...d.data() })))
     listEvaluasi.value = items
   } catch (err) {
     console.warn('Gagal fetch data evaluasi Firestore:', err)
@@ -154,7 +180,7 @@ const chartData = computed(() => {
         backgroundColor: '#ff79c6', // neo-pink
         borderColor: '#282a36', // neo-black border
         borderWidth: 3,
-        borderRadius: 0, // Neo Brutalism sharp corners
+        borderRadius: 6, // Neo Brutalism subtle rounded corners
         data: [rataTotalPre.value, rataPGPre.value, rataPraktikPre.value],
       },
       {
@@ -162,7 +188,7 @@ const chartData = computed(() => {
         backgroundColor: '#8be9fd', // neo-blue
         borderColor: '#282a36',
         borderWidth: 3,
-        borderRadius: 0,
+        borderRadius: 6,
         data: [rataTotalPost.value, rataPGPost.value, rataPraktikPost.value],
       },
     ],
@@ -192,7 +218,7 @@ const chartOptions = {
       bodyColor: '#ffffff',
       borderColor: '#f8f8f2',
       borderWidth: 2,
-      cornerRadius: 0,
+      cornerRadius: 6,
       padding: 12,
       bodyFont: {
         family: "'Space Grotesk', sans-serif",
@@ -260,6 +286,11 @@ const calcItemAnalysis = (jenisTes) => {
     .filter((s) => s.jenis_tes === jenisTes)
     .sort((a, b) => (Number(a.nomor) || 0) - (Number(b.nomor) || 0))
 
+  const countPG = targetSoal.filter((s) => s.kategori === 'Pilihan Ganda').length || 15
+  const countPraktik = targetSoal.filter((s) => s.kategori === 'Praktik').length || 5
+  const poinPerPG = Math.round((70 / countPG) * 10) / 10
+  const poinPerPraktik = Math.round((30 / countPraktik) * 10) / 10
+
   return targetSoal.map((soal) => {
     const totalPeserta = submissions.length
     let correctCount = 0
@@ -268,12 +299,12 @@ const calcItemAnalysis = (jenisTes) => {
     const praktikDistribution = { 'Bisa': 0, 'Belum Bisa': 0 }
 
     submissions.forEach((sub) => {
-      const jwb = sub.jawaban?.[soal.nomor]
+      const jwb = sub.jawaban?.[soal.nomor] ?? sub.jawaban?.[String(soal.nomor)]
       if (soal.kategori === 'Pilihan Ganda') {
         if (jwb && opsiDistribution[jwb] !== undefined) {
           opsiDistribution[jwb]++
         }
-        if (jwb === soal.kunci_jawaban) {
+        if (jwb && String(jwb).trim().toUpperCase() === String(soal.kunci_jawaban).trim().toUpperCase()) {
           correctCount++
         }
       } else {
@@ -292,10 +323,10 @@ const calcItemAnalysis = (jenisTes) => {
     if (totalPeserta > 0) {
       if (soal.kategori === 'Pilihan Ganda') {
         percentage = Math.round((correctCount / totalPeserta) * 100)
-        rataPoin = Math.round(((correctCount * 10) / totalPeserta) * 10) / 10
+        rataPoin = Math.round(((correctCount * poinPerPG) / totalPeserta) * 10) / 10
       } else {
         percentage = Math.round((bisaCount / totalPeserta) * 100)
-        rataPoin = Math.round(((bisaCount * 6) / totalPeserta) * 10) / 10
+        rataPoin = Math.round(((bisaCount * poinPerPraktik) / totalPeserta) * 10) / 10
       }
     } else {
       percentage = 0
@@ -328,7 +359,7 @@ const calcItemAnalysis = (jenisTes) => {
       praktikDistribution,
       percentage,
       rataPoin,
-      maxPoin: soal.kategori === 'Pilihan Ganda' ? 10 : 6,
+      maxPoin: soal.kategori === 'Pilihan Ganda' ? poinPerPG : poinPerPraktik,
       statusLabel,
       statusBadgeColor,
       isSampleData: totalPeserta === 0,
@@ -495,9 +526,9 @@ const downloadExcel = () => {
     <AdminNav title="ANALITIK & LAPORAN" />
 
     <!-- Action Header Card -->
-    <header class="bg-neo-yellow border-3 border-neo-black p-4 sm:p-8 shadow-neo flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+    <header class="bg-neo-yellow border-3 border-neo-black p-4 sm:p-8 shadow-neo rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
       <div class="space-y-2">
-        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black shadow-neo">
+        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black shadow-neo rounded-md">
           Workshop Pembuatan Website Portfolio dengan Google Sites
         </div>
         <h1 class="font-display text-3xl sm:text-5xl md:text-6xl uppercase tracking-wider text-neo-black leading-none">
@@ -546,7 +577,7 @@ const downloadExcel = () => {
     <!-- Empty State Alert Jika Database Kosong -->
     <div
       v-if="listEvaluasi.length === 0 && !isLoading"
-      class="p-4 sm:p-5 bg-white border-3 border-neo-black shadow-neo flex items-start sm:items-center gap-3.5"
+      class="p-4 sm:p-5 bg-white border-3 border-neo-black shadow-neo rounded-xl flex items-start sm:items-center gap-3.5"
     >
       <div class="text-3xl sm:text-4xl text-neo-black flex items-center justify-center">
         <span class="material-symbols-outlined text-4xl">inbox</span>
@@ -565,7 +596,7 @@ const downloadExcel = () => {
     <div
       v-if="pdfNotification"
       :class="[
-        'p-4 border-3 border-neo-black font-bold text-sm shadow-neo flex items-center justify-between gap-4',
+        'p-4 border-3 border-neo-black font-bold text-sm shadow-neo rounded-xl flex items-center justify-between gap-4',
         pdfNotification.type === 'success' ? 'bg-neo-green text-neo-black' : 'bg-[#ff6b6b] text-white'
       ]"
     >
@@ -579,11 +610,11 @@ const downloadExcel = () => {
     </div>
 
     <!-- AREA DOKUMEN LAPORAN YANG DITANGKAP OLEH html2canvas DAN jsPDF -->
-    <div id="report-printable-area" class="space-y-8 bg-neo-bg p-4 sm:p-6 border-3 border-neo-black shadow-neo">
+    <div id="report-printable-area" class="space-y-8 bg-neo-bg p-4 sm:p-6 border-3 border-neo-black shadow-neo rounded-2xl">
       <!-- Kop Dokumen Laporan -->
-      <div class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <span class="text-xs font-mono font-bold uppercase bg-neo-yellow px-2 py-0.5 border border-neo-black">
+          <span class="text-xs font-mono font-bold uppercase bg-neo-yellow px-2 py-0.5 border border-neo-black rounded-md">
             LAPORAN HASIL PRE & POST TEST
           </span>
           <h2 class="font-display text-2xl sm:text-3xl uppercase tracking-wider mt-1 text-neo-black">
@@ -594,8 +625,8 @@ const downloadExcel = () => {
           </p>
         </div>
 
-        <div class="flex items-center gap-2 border-2 border-neo-black bg-neo-bg p-2.5 sm:p-3 shrink-0">
-          <div class="w-8 h-8 bg-neo-yellow border-2 border-neo-black flex items-center justify-center font-display text-lg">
+        <div class="flex items-center gap-2 border-2 border-neo-black bg-neo-bg p-2.5 sm:p-3 shrink-0 rounded-lg">
+          <div class="w-8 h-8 bg-neo-yellow border-2 border-neo-black flex items-center justify-center font-display text-lg rounded-md">
             GS
           </div>
           <div class="text-xs font-bold leading-tight">
@@ -608,10 +639,10 @@ const downloadExcel = () => {
       <!-- Metrik Ringkas Perbandingan -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         <!-- Rata-rata Pre-Test -->
-        <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+        <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo rounded-xl">
           <div class="flex items-center justify-between">
             <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60">Mean Pre-Test</span>
-            <span class="w-2.5 h-2.5 bg-neo-pink border border-neo-black"></span>
+            <span class="w-2.5 h-2.5 bg-neo-pink border border-neo-black rounded-sm"></span>
           </div>
           <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             {{ rataTotalPre }}
@@ -622,10 +653,10 @@ const downloadExcel = () => {
         </div>
 
         <!-- Rata-rata Post-Test -->
-        <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+        <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo rounded-xl">
           <div class="flex items-center justify-between">
             <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60">Mean Post-Test</span>
-            <span class="w-2.5 h-2.5 bg-neo-blue border border-neo-black"></span>
+            <span class="w-2.5 h-2.5 bg-neo-blue border border-neo-black rounded-sm"></span>
           </div>
           <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             {{ rataTotalPost }}
@@ -636,7 +667,7 @@ const downloadExcel = () => {
         </div>
 
         <!-- Peningkatan Rata-rata -->
-        <div class="bg-neo-green border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+        <div class="bg-neo-green border-3 border-neo-black p-3.5 sm:p-5 shadow-neo rounded-xl">
           <div class="flex items-center justify-between">
             <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/80">Peningkatan</span>
             <span class="material-symbols-outlined text-sm font-bold">trending_up</span>
@@ -650,10 +681,10 @@ const downloadExcel = () => {
         </div>
 
         <!-- Total Submisi -->
-        <div class="bg-neo-yellow border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+        <div class="bg-neo-yellow border-3 border-neo-black p-3.5 sm:p-5 shadow-neo rounded-xl">
           <div class="flex items-center justify-between">
             <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/80">Total Evaluasi</span>
-            <span class="w-2.5 h-2.5 bg-neo-black border border-neo-black"></span>
+            <span class="w-2.5 h-2.5 bg-neo-black border border-neo-black rounded-sm"></span>
           </div>
           <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             {{ listEvaluasi.length }}
@@ -665,36 +696,36 @@ const downloadExcel = () => {
       </div>
 
       <!-- BAR CHART CONTAINER DENGAN BORDER TEBAL BRUTALISM -->
-      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 md:p-8 shadow-neo space-y-4">
+      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 md:p-8 shadow-neo rounded-2xl space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2 border-b-2 border-neo-black pb-3">
           <div class="flex items-center gap-2">
-            <span class="w-3.5 h-3.5 bg-neo-pink border-2 border-neo-black"></span>
+            <span class="w-3.5 h-3.5 bg-neo-pink border-2 border-neo-black rounded-sm"></span>
             <h3 class="font-display text-2xl sm:text-3xl uppercase tracking-wider text-neo-black">
               Grafik Komparasi Rata-Rata Nilai
             </h3>
           </div>
           <div class="flex items-center gap-3 text-xs font-bold">
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-neo-pink border border-neo-black"></span> Pre-Test</span>
-            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-neo-blue border border-neo-black"></span> Post-Test</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-neo-pink border border-neo-black rounded-sm"></span> Pre-Test</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-neo-blue border border-neo-black rounded-sm"></span> Post-Test</span>
           </div>
         </div>
 
         <!-- Canvas Chart Box dengan Border Tebal Hitam Khas Neo Brutalism -->
-        <div class="border-3 border-neo-black bg-neo-bg p-2.5 sm:p-6 shadow-neo min-h-[280px] h-[300px] sm:min-h-[360px] sm:h-[380px]">
+        <div class="border-3 border-neo-black bg-neo-bg p-2.5 sm:p-6 shadow-neo rounded-xl min-h-[280px] h-[300px] sm:min-h-[360px] sm:h-[380px]">
           <Bar :data="chartData" :options="chartOptions" />
         </div>
       </section>
 
       <!-- TABEL RINGKASAN DATA KOMPARATIF -->
-      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo space-y-4">
+      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo rounded-2xl space-y-4">
         <div class="flex items-center gap-2">
-          <span class="w-3.5 h-3.5 bg-neo-yellow border-2 border-neo-black"></span>
+          <span class="w-3.5 h-3.5 bg-neo-yellow border-2 border-neo-black rounded-sm"></span>
           <h3 class="font-display text-xl sm:text-2xl uppercase tracking-wider">
             Tabel Ringkasan Analitik
           </h3>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto border-3 border-neo-black rounded-xl overflow-hidden shadow-neo">
           <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[560px]">
             <thead>
               <tr class="bg-neo-black text-neo-bg border-b-3 border-neo-black">
@@ -731,13 +762,13 @@ const downloadExcel = () => {
       <!-- ======================================================== -->
       <!-- SEKSI ANALISIS RATA-RATA JAWABAN PERSOAL (ITEM ANALYSIS) -->
       <!-- ======================================================== -->
-      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 md:p-8 shadow-neo space-y-4 sm:space-y-6">
+      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 md:p-8 shadow-neo rounded-2xl space-y-4 sm:space-y-6">
         <!-- Header & Nav Tabs -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-3 border-neo-black pb-4">
           <div class="space-y-1">
             <div class="flex items-center gap-2">
-              <span class="w-3.5 h-3.5 bg-neo-pink border-2 border-neo-black"></span>
-              <span class="text-xs font-mono font-bold uppercase bg-neo-yellow px-2 py-0.5 border border-neo-black">
+              <span class="w-3.5 h-3.5 bg-neo-pink border-2 border-neo-black rounded-sm"></span>
+              <span class="text-xs font-mono font-bold uppercase bg-neo-yellow px-2 py-0.5 border border-neo-black rounded-md">
                 ITEM ANALYSIS • EVALUASI SOAL
               </span>
             </div>
@@ -750,12 +781,12 @@ const downloadExcel = () => {
           </div>
 
           <!-- Tab Pemilih Sesi & Komparasi -->
-          <div class="flex items-center gap-1.5 border-3 border-neo-black bg-neo-bg p-1.5 flex-wrap self-start md:self-auto w-full md:w-auto">
+          <div class="flex items-center gap-1.5 border-3 border-neo-black bg-neo-bg p-1.5 flex-wrap self-start md:self-auto w-full md:w-auto rounded-xl">
             <button
               type="button"
               @click="activeItemTab = 'Pre-Test'"
               :class="[
-                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1',
+                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1 rounded-lg',
                 activeItemTab === 'Pre-Test' ? 'bg-neo-pink text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
               ]"
             >
@@ -766,7 +797,7 @@ const downloadExcel = () => {
               type="button"
               @click="activeItemTab = 'Post-Test'"
               :class="[
-                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1',
+                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1 rounded-lg',
                 activeItemTab === 'Post-Test' ? 'bg-neo-blue text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
               ]"
             >
@@ -777,7 +808,7 @@ const downloadExcel = () => {
               type="button"
               @click="activeItemTab = 'Komparasi'"
               :class="[
-                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1',
+                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1 rounded-lg',
                 activeItemTab === 'Komparasi' ? 'bg-neo-yellow text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
               ]"
             >
@@ -797,7 +828,7 @@ const downloadExcel = () => {
               :key="kat"
               @click="itemKategoriFilter = kat"
               :class="[
-                'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer',
+                'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer rounded-lg',
                 itemKategoriFilter === kat ? 'bg-neo-black text-neo-bg shadow-neo' : 'bg-neo-bg hover:bg-white'
               ]"
             >
@@ -807,11 +838,11 @@ const downloadExcel = () => {
 
           <!-- Status Sumber Data -->
           <div class="text-xs font-mono font-bold">
-            <span v-if="itemAnalysisData[0]?.isSampleData" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-yellow border-2 border-neo-black">
+            <span v-if="itemAnalysisData[0]?.isSampleData" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-yellow border-2 border-neo-black rounded-md">
               <span class="material-symbols-outlined text-[15px]">info</span>
               <span>Data Rujukan Standar (0 Submisi Riil)</span>
             </span>
-            <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-green border-2 border-neo-black">
+            <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-green border-2 border-neo-black rounded-md">
               <span class="material-symbols-outlined text-[15px]">check_circle</span>
               <span>Berdasarkan {{ itemAnalysisData[0]?.totalPeserta }} Peserta Riil</span>
             </span>
@@ -820,13 +851,13 @@ const downloadExcel = () => {
 
         <!-- 3 Highlight Metrics Card -->
         <div v-if="activeItemTab !== 'Komparasi'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="bg-neo-bg border-3 border-neo-black p-4 shadow-neo">
+          <div class="bg-neo-bg border-3 border-neo-black p-4 shadow-neo rounded-xl">
             <span class="text-xs font-mono font-bold uppercase text-neo-black/60 block">Rata-Rata Ketercapaian Butir</span>
             <div class="font-display text-4xl text-neo-black mt-1 leading-none">{{ itemSummaryStats.meanRate }}%</div>
             <span class="text-[11px] font-bold text-neo-black/70 mt-1 block">Rerata Seluruh Butir Soal {{ activeItemTab }}</span>
           </div>
 
-          <div class="bg-neo-green/30 border-3 border-neo-black p-4 shadow-neo">
+          <div class="bg-neo-green/30 border-3 border-neo-black p-4 shadow-neo rounded-xl">
             <span class="text-xs font-mono font-bold uppercase text-neo-black/70 block">Indikator Paling Dikuasai</span>
             <div class="font-display text-3xl text-neo-black mt-1 leading-none">
               Soal #{{ itemSummaryStats.highest?.nomor }} ({{ itemSummaryStats.highest?.percentage }}%)
@@ -836,7 +867,7 @@ const downloadExcel = () => {
             </span>
           </div>
 
-          <div class="bg-neo-pink/30 border-3 border-neo-black p-4 shadow-neo">
+          <div class="bg-neo-pink/30 border-3 border-neo-black p-4 shadow-neo rounded-xl">
             <span class="text-xs font-mono font-bold uppercase text-neo-black/70 block">Butuh Penguatan / Terendah</span>
             <div class="font-display text-3xl text-neo-black mt-1 leading-none">
               Soal #{{ itemSummaryStats.lowest?.nomor }} ({{ itemSummaryStats.lowest?.percentage }}%)
@@ -852,36 +883,36 @@ const downloadExcel = () => {
           <div
             v-for="soal in filteredItemAnalysis"
             :key="soal.id"
-            class="border-3 border-neo-black bg-neo-bg p-3.5 sm:p-5 shadow-neo space-y-3 sm:space-y-4 transition-all"
+            class="border-3 border-neo-black bg-neo-bg p-3.5 sm:p-5 shadow-neo rounded-xl space-y-3 sm:space-y-4 transition-all"
           >
             <!-- Bar Atas Kartu Soal -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-neo-black pb-3">
               <div class="flex items-center gap-2 flex-wrap">
                 <span
                   :class="[
-                    'px-3 py-1 font-display text-xl uppercase tracking-wider border-2 border-neo-black shadow-neo',
+                    'px-3 py-1 font-display text-xl uppercase tracking-wider border-2 border-neo-black shadow-neo rounded-lg',
                     soal.jenis_tes === 'Pre-Test' ? 'bg-neo-pink text-neo-black' : 'bg-neo-blue text-neo-black'
                   ]"
                 >
                   {{ soal.jenis_tes }} #{{ soal.nomor }}
                 </span>
-                <span class="bg-neo-black text-neo-bg px-2.5 py-0.5 font-mono text-xs font-bold uppercase">
+                <span class="bg-neo-black text-neo-bg px-2.5 py-0.5 font-mono text-xs font-bold uppercase rounded-md">
                   {{ soal.kategori }}
                 </span>
-                <span v-if="soal.kategori === 'Pilihan Ganda'" class="bg-neo-yellow border border-neo-black px-2 py-0.5 font-mono text-xs font-bold">
+                <span v-if="soal.kategori === 'Pilihan Ganda'" class="bg-neo-yellow border border-neo-black px-2 py-0.5 font-mono text-xs font-bold rounded-md">
                   Kunci: <strong>{{ soal.kunci_jawaban }}</strong>
                 </span>
               </div>
 
               <!-- Skor Rata-rata & Status Badge -->
               <div class="flex items-center gap-2">
-                <span :class="['px-2.5 py-1 font-mono text-xs font-bold uppercase border-2 border-neo-black shadow-neo', soal.statusBadgeColor]">
+                <span :class="['px-2.5 py-1 font-mono text-xs font-bold uppercase border-2 border-neo-black shadow-neo rounded-lg', soal.statusBadgeColor]">
                   {{ soal.statusLabel }}
                 </span>
                 <button
                   type="button"
                   @click="toggleExpandQuestion(soal.id)"
-                  class="px-2.5 py-1 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-yellow transition-all shadow-neo cursor-pointer inline-flex items-center gap-1"
+                  class="px-2.5 py-1 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-yellow transition-all shadow-neo cursor-pointer inline-flex items-center gap-1 rounded-lg"
                 >
                   <span>{{ expandedQuestionId === soal.id ? 'Tutup Opsi' : 'Rincian Opsi' }}</span>
                   <span class="material-symbols-outlined text-[15px]">{{ expandedQuestionId === soal.id ? 'expand_less' : 'expand_more' }}</span>
@@ -895,7 +926,7 @@ const downloadExcel = () => {
             </p>
 
             <!-- Visual Progress Ketercapaian -->
-            <div class="space-y-1.5 bg-white border-2 border-neo-black p-3.5 shadow-neo">
+            <div class="space-y-1.5 bg-white border-2 border-neo-black p-3.5 shadow-neo rounded-xl">
               <div class="flex items-center justify-between text-xs font-mono font-bold flex-wrap gap-1">
                 <span>RATA-RATA KEBERHASILAN (BENAR / BISA):</span>
                 <span class="text-sm font-bold">
@@ -904,11 +935,11 @@ const downloadExcel = () => {
               </div>
 
               <!-- Neo Brutalism Progress Bar -->
-              <div class="w-full h-5 bg-neo-bg border-2 border-neo-black overflow-hidden relative">
+              <div class="w-full h-5 bg-neo-bg border-2 border-neo-black overflow-hidden relative rounded-full">
                 <div
                   :style="{ width: `${soal.percentage}%` }"
                   :class="[
-                    'h-full border-r-2 border-neo-black transition-all duration-500',
+                    'h-full border-r-2 border-neo-black transition-all duration-500 rounded-full',
                     soal.percentage >= 80 ? 'bg-neo-green' : soal.percentage >= 60 ? 'bg-neo-blue' : 'bg-neo-pink'
                   ]"
                 ></div>
@@ -927,7 +958,7 @@ const downloadExcel = () => {
                   v-for="item in getSortedOpsi(soal.opsi)"
                   :key="item.key"
                   :class="[
-                    'p-3 border-2 border-neo-black text-xs space-y-1.5 transition-all',
+                    'p-3 border-2 border-neo-black text-xs space-y-1.5 transition-all rounded-lg',
                     item.key === soal.kunci_jawaban ? 'bg-neo-green/30 font-bold border-neo-black' : 'bg-white'
                   ]"
                 >
@@ -939,7 +970,7 @@ const downloadExcel = () => {
                         <span>Kunci Benar</span>
                       </span>
                     </span>
-                    <span class="font-mono font-bold bg-neo-black text-white px-1.5 py-0.5 text-[11px]">
+                    <span class="font-mono font-bold bg-neo-black text-white px-1.5 py-0.5 text-[11px] rounded-md">
                       {{ soal.opsiDistribution[item.key] || 0 }} Respon ({{ soal.totalPeserta > 0 ? Math.round(((soal.opsiDistribution[item.key] || 0) / soal.totalPeserta) * 100) : 0 }}%)
                     </span>
                   </div>
@@ -951,24 +982,24 @@ const downloadExcel = () => {
 
               <!-- Opsi Praktik / Penilaian Diri -->
               <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="p-3 border-2 border-neo-black bg-neo-green/30 space-y-1 text-xs">
+                <div class="p-3 border-2 border-neo-black bg-neo-green/30 space-y-1 text-xs rounded-lg">
                   <div class="flex items-center justify-between font-bold font-mono">
                     <span class="inline-flex items-center gap-1">
                       <span class="material-symbols-outlined text-[15px] text-green-700">thumb_up</span>
                       <span>Menjawab 'Bisa'</span>
                     </span>
-                    <span class="bg-neo-black text-white px-2 py-0.5">{{ soal.praktikDistribution['Bisa'] }} Respon</span>
+                    <span class="bg-neo-black text-white px-2 py-0.5 rounded-md">{{ soal.praktikDistribution['Bisa'] }} Respon</span>
                   </div>
                   <p class="font-medium text-neo-black/80">Peserta menguasai indikator portofolio ini.</p>
                 </div>
 
-                <div class="p-3 border-2 border-neo-black bg-neo-pink/30 space-y-1 text-xs">
+                <div class="p-3 border-2 border-neo-black bg-neo-pink/30 space-y-1 text-xs rounded-lg">
                   <div class="flex items-center justify-between font-bold font-mono">
                     <span class="inline-flex items-center gap-1">
                       <span class="material-symbols-outlined text-[15px] text-red-700">thumb_down</span>
                       <span>Menjawab 'Belum Bisa'</span>
                     </span>
-                    <span class="bg-neo-black text-white px-2 py-0.5">{{ soal.praktikDistribution['Belum Bisa'] }} Respon</span>
+                    <span class="bg-neo-black text-white px-2 py-0.5 rounded-md">{{ soal.praktikDistribution['Belum Bisa'] }} Respon</span>
                   </div>
                   <p class="font-medium text-neo-black/80">Peserta memerlukan pendampingan materi lebih lanjut.</p>
                 </div>
@@ -988,7 +1019,7 @@ const downloadExcel = () => {
             </span>
           </div>
 
-          <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo">
+          <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo rounded-xl overflow-hidden">
             <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[700px]">
               <thead>
                 <tr class="bg-neo-black text-neo-bg">
@@ -1026,7 +1057,7 @@ const downloadExcel = () => {
                     {{ item.rataPoin }} / {{ item.maxPoin }}
                   </td>
                   <td class="p-3 text-center">
-                    <span :class="['px-2 py-0.5 border border-neo-black font-mono text-[11px] font-bold uppercase inline-block', item.statusBadgeColor]">
+                    <span :class="['px-2 py-0.5 border border-neo-black font-mono text-[11px] font-bold uppercase inline-block rounded-md', item.statusBadgeColor]">
                       {{ item.statusLabel.split(' ')[0] }}
                     </span>
                   </td>
@@ -1038,7 +1069,7 @@ const downloadExcel = () => {
 
         <!-- MODE TAB 3: TABEL MATRIKS KOMPARASI PRE VS POST (GAIN PER BUTIR INDIKATOR) -->
         <div v-else class="space-y-4">
-          <div class="border-l-4 border-neo-pink bg-white p-4 border-3 border-neo-black shadow-neo">
+          <div class="border-l-4 border-neo-pink bg-white p-4 border-3 border-neo-black shadow-neo rounded-xl">
             <h4 class="font-display text-2xl uppercase tracking-wider text-neo-black">
               Matriks Peningkatan Capaian Indikator (Pre vs Post)
             </h4>
@@ -1047,7 +1078,7 @@ const downloadExcel = () => {
             </p>
           </div>
 
-          <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo">
+          <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo rounded-xl overflow-hidden">
             <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[700px]">
               <thead>
                 <tr class="bg-neo-black text-neo-bg">
@@ -1082,7 +1113,7 @@ const downloadExcel = () => {
                     {{ k.postRate }}%
                   </td>
                   <td class="p-3 text-center font-mono font-bold bg-neo-green/10 text-neo-black">
-                    <span class="inline-block px-2 py-0.5 bg-neo-green border border-neo-black text-xs">
+                    <span class="inline-block px-2 py-0.5 bg-neo-green border border-neo-black text-xs rounded-md">
                       +{{ k.deltaGain }}%
                     </span>
                   </td>

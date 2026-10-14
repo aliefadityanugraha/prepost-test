@@ -1,12 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
-import Test from '../views/Test.vue'
-import Result from '../views/Result.vue'
-import AdminLogin from '../views/admin/Login.vue'
-import AdminDashboard from '../views/admin/Dashboard.vue'
-import AdminSettings from '../views/admin/Settings.vue'
-import AdminQuestions from '../views/admin/Questions.vue'
-import AdminAnalytics from '../views/admin/Analytics.vue'
 import { useAuthStore } from '../stores/authStore'
 
 const routes = [
@@ -14,24 +6,24 @@ const routes = [
   {
     path: '/',
     name: 'home',
-    component: Home,
+    component: () => import('../views/Home.vue'),
   },
   {
     path: '/test',
     name: 'test',
-    component: Test,
+    component: () => import('../views/Test.vue'),
   },
   {
     path: '/result',
     name: 'result',
-    component: Result,
+    component: () => import('../views/Result.vue'),
   },
 
   // Rute Admin
   {
     path: '/admin/login',
     name: 'admin-login',
-    component: AdminLogin,
+    component: () => import('../views/admin/Login.vue'),
   },
   {
     path: '/admin',
@@ -40,25 +32,25 @@ const routes = [
   {
     path: '/admin/dashboard',
     name: 'admin-dashboard',
-    component: AdminDashboard,
+    component: () => import('../views/admin/Dashboard.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/admin/questions',
     name: 'admin-questions',
-    component: AdminQuestions,
+    component: () => import('../views/admin/Questions.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/admin/analytics',
     name: 'admin-analytics',
-    component: AdminAnalytics,
+    component: () => import('../views/admin/Analytics.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/admin/settings',
     name: 'admin-settings',
-    component: AdminSettings,
+    component: () => import('../views/admin/Settings.vue'),
     meta: { requiresAuth: true },
   },
 

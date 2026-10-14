@@ -249,9 +249,9 @@ const handleReSeed = async () => {
     <AdminNav title="BANK SOAL (CRUD)" />
 
     <!-- Header Section -->
-    <header class="bg-neo-yellow border-3 border-neo-black p-4 sm:p-8 shadow-neo flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+    <header class="bg-neo-yellow border-3 border-neo-black p-4 sm:p-8 shadow-neo rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
       <div class="space-y-2">
-        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black shadow-neo">
+        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black shadow-neo rounded-md">
           Workshop Pembuatan Website Portfolio dengan Google Sites
         </div>
         <h1 class="font-display text-3xl sm:text-5xl md:text-6xl uppercase tracking-wider text-neo-black leading-none">
@@ -284,7 +284,7 @@ const handleReSeed = async () => {
     <div
       v-if="notification"
       :class="[
-        'p-4 border-3 border-neo-black font-bold text-sm shadow-neo flex items-center justify-between gap-4',
+        'p-4 border-3 border-neo-black font-bold text-sm shadow-neo rounded-xl flex items-center justify-between gap-4',
         notification.type === 'success' ? 'bg-neo-green text-neo-black' : 'bg-[#ff6b6b] text-white'
       ]"
     >
@@ -296,25 +296,25 @@ const handleReSeed = async () => {
 
     <!-- Quick Stats Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-      <div class="bg-white border-3 border-neo-black p-4 shadow-neo">
+      <div class="bg-white border-3 border-neo-black p-4 shadow-neo rounded-xl">
         <span class="text-xs font-mono font-bold uppercase text-neo-black/60 block">Total Instrumen</span>
         <div class="font-display text-3xl sm:text-4xl text-neo-black mt-1 leading-none">{{ soalList.length }}</div>
         <span class="text-[11px] font-bold text-neo-black/70 mt-1 block">Semua Butir Soal</span>
       </div>
 
-      <div class="bg-white border-3 border-neo-black p-4 shadow-neo">
+      <div class="bg-white border-3 border-neo-black p-4 shadow-neo rounded-xl">
         <span class="text-xs font-mono font-bold uppercase text-neo-black/60 block">Pre-Test</span>
         <div class="font-display text-3xl sm:text-4xl text-neo-pink mt-1 leading-none">{{ totalPreTest }}</div>
         <span class="text-[11px] font-bold text-neo-black/70 mt-1 block">Awal Workshop</span>
       </div>
 
-      <div class="bg-white border-3 border-neo-black p-4 shadow-neo">
+      <div class="bg-white border-3 border-neo-black p-4 shadow-neo rounded-xl">
         <span class="text-xs font-mono font-bold uppercase text-neo-black/60 block">Post-Test</span>
         <div class="font-display text-3xl sm:text-4xl text-neo-yellow mt-1 leading-none">{{ totalPostTest }}</div>
         <span class="text-[11px] font-bold text-neo-black/70 mt-1 block">Akhir Workshop</span>
       </div>
 
-      <div class="bg-white border-3 border-neo-black p-4 shadow-neo">
+      <div class="bg-white border-3 border-neo-black p-4 shadow-neo rounded-xl">
         <span class="text-xs font-mono font-bold uppercase text-neo-black/60 block">PG / Praktik</span>
         <div class="font-display text-2xl sm:text-3xl text-neo-blue mt-1 leading-none">{{ totalPG }} / {{ totalPraktik }}</div>
         <span class="text-[11px] font-bold text-neo-black/70 mt-1 block">Proporsi Instrumen</span>
@@ -322,14 +322,14 @@ const handleReSeed = async () => {
     </div>
 
     <!-- Search & Filter Controls -->
-    <div class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo space-y-3">
+    <div class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo rounded-2xl space-y-3">
       <!-- Search -->
       <div class="w-full">
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Cari kalimat pertanyaan soal..."
-          class="w-full px-4 py-2.5 bg-neo-bg border-3 border-neo-black text-sm font-medium focus:bg-white focus:outline-none focus:shadow-neo transition-all"
+          class="w-full px-4 py-2.5 bg-neo-bg border-3 border-neo-black text-sm font-medium focus:bg-white focus:outline-none focus:shadow-neo transition-all rounded-xl"
         />
       </div>
 
@@ -343,7 +343,7 @@ const handleReSeed = async () => {
             :key="jenis"
             @click="filterJenisTes = jenis"
             :class="[
-              'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer',
+              'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer rounded-lg',
               filterJenisTes === jenis ? 'bg-neo-pink text-neo-black shadow-neo' : 'bg-neo-bg hover:bg-white'
             ]"
           >
@@ -359,7 +359,7 @@ const handleReSeed = async () => {
             :key="kat"
             @click="filterKategori = kat"
             :class="[
-              'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer',
+              'px-3 py-1 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer rounded-lg',
               filterKategori === kat ? 'bg-neo-blue text-neo-black shadow-neo' : 'bg-neo-bg hover:bg-white'
             ]"
           >
@@ -370,12 +370,12 @@ const handleReSeed = async () => {
     </div>
 
     <!-- List Soal Cards -->
-    <div v-if="isLoading" class="bg-white border-3 border-neo-black p-12 text-center shadow-neo">
+    <div v-if="isLoading" class="bg-white border-3 border-neo-black p-12 text-center shadow-neo rounded-2xl">
       <div class="animate-spin inline-block w-8 h-8 border-4 border-neo-black border-t-transparent rounded-full mb-3"></div>
       <p class="font-display text-2xl uppercase tracking-wider">Memuat Bank Soal...</p>
     </div>
 
-    <div v-else-if="filteredSoal.length === 0" class="bg-white border-3 border-neo-black p-12 text-center shadow-neo">
+    <div v-else-if="filteredSoal.length === 0" class="bg-white border-3 border-neo-black p-12 text-center shadow-neo rounded-2xl">
       <div class="font-display text-3xl uppercase tracking-wider mb-2">Tidak Ada Soal Ditemukan</div>
       <p class="text-xs text-neo-black/70">Sesuaikan filter atau klik tombol "Tambah Soal Baru" di atas.</p>
     </div>
@@ -384,39 +384,39 @@ const handleReSeed = async () => {
       <div
         v-for="soal in filteredSoal"
         :key="soal.id || `${soal.jenis_tes}_${soal.nomor}`"
-        class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo space-y-4 transition-all hover:border-neo-black hover:translate-x-0.5"
+        class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo rounded-2xl space-y-4 transition-all hover:border-neo-black hover:translate-x-0.5"
       >
         <!-- Card Top Bar -->
         <div class="flex items-center justify-between flex-wrap gap-2 border-b-2 border-neo-black pb-3">
           <div class="flex items-center gap-2 flex-wrap">
             <span
               :class="[
-                'px-2.5 py-1 font-display text-lg uppercase tracking-wider border-2 border-neo-black shadow-neo',
+                'px-2.5 py-1 font-display text-lg uppercase tracking-wider border-2 border-neo-black shadow-neo rounded-lg',
                 soal.jenis_tes === 'Pre-Test' ? 'bg-neo-pink text-neo-black' : 'bg-neo-yellow text-neo-black'
               ]"
             >
               {{ soal.jenis_tes }} #{{ soal.nomor }}
             </span>
-            <span class="bg-neo-black text-neo-bg px-2 py-0.5 font-mono text-xs font-bold uppercase">
+            <span class="bg-neo-black text-neo-bg px-2 py-0.5 font-mono text-xs font-bold uppercase rounded-md">
               {{ soal.kategori }}
             </span>
           </div>
 
           <!-- Action Buttons -->
           <div class="flex items-center gap-2">
-            <span v-if="soal.kategori === 'Pilihan Ganda'" class="bg-neo-yellow border border-neo-black px-2.5 py-1 text-xs font-mono font-bold">
+            <span v-if="soal.kategori === 'Pilihan Ganda'" class="bg-neo-yellow border border-neo-black px-2.5 py-1 text-xs font-mono font-bold rounded-md">
               Kunci: <strong>{{ soal.kunci_jawaban }}</strong>
             </span>
             <button
               @click="openEditModal(soal)"
-              class="border-2 border-neo-black bg-white px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-neo-yellow transition-all cursor-pointer flex items-center gap-1"
+              class="border-2 border-neo-black bg-white px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-neo-yellow transition-all cursor-pointer flex items-center gap-1 rounded-lg"
             >
               <span class="material-symbols-outlined text-sm">edit</span>
               <span>Edit</span>
             </button>
             <button
               @click="confirmDelete(soal)"
-              class="border-2 border-neo-black bg-[#ff6b6b] text-white px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-red-600 transition-all cursor-pointer flex items-center gap-1"
+              class="border-2 border-neo-black bg-[#ff6b6b] text-white px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-red-600 transition-all cursor-pointer flex items-center gap-1 rounded-lg"
             >
               <span class="material-symbols-outlined text-sm">delete</span>
               <span>Hapus</span>
@@ -435,25 +435,25 @@ const handleReSeed = async () => {
             v-for="item in getSortedOpsi(soal.opsi)"
             :key="item.key"
             :class="[
-              'p-2.5 border-2 border-neo-black flex items-start gap-2',
+              'p-2.5 border-2 border-neo-black flex items-start gap-2 rounded-lg',
               item.key === soal.kunci_jawaban ? 'bg-neo-yellow/70 font-bold' : 'bg-neo-bg'
             ]"
           >
-            <span class="font-mono font-bold bg-neo-black text-white px-1.5 py-0.5 text-[11px]">{{ item.key }}</span>
+            <span class="font-mono font-bold bg-neo-black text-white px-1.5 py-0.5 text-[11px] rounded-md">{{ item.key }}</span>
             <span>{{ item.teks }}</span>
           </div>
         </div>
 
         <div v-else class="flex gap-2 text-xs font-bold items-center flex-wrap">
-          <span class="px-3 py-1.5 border-2 border-neo-black bg-neo-green inline-flex items-center gap-1">
+          <span class="px-3 py-1.5 border-2 border-neo-black bg-neo-green inline-flex items-center gap-1 rounded-lg">
             <span class="material-symbols-outlined text-sm">thumb_up</span>
             <span>Bisa</span>
           </span>
-          <span class="px-3 py-1.5 border-2 border-neo-black bg-neo-pink inline-flex items-center gap-1">
+          <span class="px-3 py-1.5 border-2 border-neo-black bg-neo-pink inline-flex items-center gap-1 rounded-lg">
             <span class="material-symbols-outlined text-sm">thumb_down</span>
             <span>Belum Bisa</span>
           </span>
-          <span class="px-3 py-1.5 border border-neo-black bg-neo-bg text-neo-black/60 italic">Penilaian Diri Unjuk Kerja</span>
+          <span class="px-3 py-1.5 border border-neo-black bg-neo-bg text-neo-black/60 italic rounded-lg">Penilaian Diri Unjuk Kerja</span>
         </div>
       </div>
     </div>
@@ -463,11 +463,11 @@ const handleReSeed = async () => {
       v-if="isModalOpen"
       class="fixed inset-0 z-50 bg-neo-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
     >
-      <div class="bg-white border-3 border-neo-black max-w-2xl w-full p-4 sm:p-8 shadow-neo max-h-[90vh] overflow-y-auto space-y-4 sm:space-y-6">
+      <div class="bg-white border-3 border-neo-black max-w-2xl w-full p-4 sm:p-8 shadow-neo rounded-3xl max-h-[90vh] overflow-y-auto space-y-4 sm:space-y-6">
         <!-- Modal Header -->
         <div class="flex items-center justify-between border-b-3 border-neo-black pb-3 sm:pb-4 gap-2">
           <div class="min-w-0">
-            <span class="bg-neo-yellow text-neo-black px-2 py-0.5 border border-neo-black font-mono text-[10px] sm:text-xs font-bold uppercase inline-block">
+            <span class="bg-neo-yellow text-neo-black px-2 py-0.5 border border-neo-black font-mono text-[10px] sm:text-xs font-bold uppercase inline-block rounded-md">
               {{ isEditMode ? 'Edit Soal' : 'Soal Baru' }}
             </span>
             <h3 class="font-display text-2xl sm:text-3xl uppercase tracking-wider mt-1 truncate">
@@ -476,7 +476,7 @@ const handleReSeed = async () => {
           </div>
           <button
             @click="isModalOpen = false"
-            class="w-9 h-9 sm:w-10 sm:h-10 border-3 border-neo-black bg-[#ff6b6b] text-white flex items-center justify-center shadow-neo hover:bg-red-600 cursor-pointer shrink-0"
+            class="w-9 h-9 sm:w-10 sm:h-10 border-3 border-neo-black bg-[#ff6b6b] text-white flex items-center justify-center shadow-neo hover:bg-red-600 cursor-pointer shrink-0 rounded-xl"
           >
             <span class="material-symbols-outlined text-xl">close</span>
           </button>
@@ -489,7 +489,7 @@ const handleReSeed = async () => {
               <label class="block text-xs font-bold uppercase">Sesi Tes *</label>
               <select
                 v-model="formData.jenis_tes"
-                class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-bold"
+                class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-bold rounded-xl"
               >
                 <option value="Pre-Test">Pre-Test (Awal)</option>
                 <option value="Post-Test">Post-Test (Akhir)</option>
@@ -503,7 +503,7 @@ const handleReSeed = async () => {
                 type="number"
                 min="1"
                 required
-                class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-mono font-bold"
+                class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-mono font-bold rounded-xl"
               />
             </div>
 
@@ -511,7 +511,7 @@ const handleReSeed = async () => {
               <label class="block text-xs font-bold uppercase">Kategori *</label>
               <select
                 v-model="formData.kategori"
-                class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-bold"
+                class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-bold rounded-xl"
               >
                 <option value="Pilihan Ganda">Pilihan Ganda (A-D)</option>
                 <option value="Praktik">Praktik (Penilaian Diri)</option>
@@ -527,19 +527,19 @@ const handleReSeed = async () => {
               rows="3"
               required
               placeholder="Tuliskan pertanyaan atau deskripsi indikator kompetensi portofolio di sini..."
-              class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-medium text-sm focus:bg-white"
+              class="w-full px-3 py-2 bg-neo-bg border-2 border-neo-black font-medium text-sm focus:bg-white rounded-xl"
             ></textarea>
           </div>
 
           <!-- Opsi Khusus Pilihan Ganda -->
-          <div v-if="formData.kategori === 'Pilihan Ganda'" class="space-y-3 border-2 border-neo-black p-4 bg-neo-bg">
+          <div v-if="formData.kategori === 'Pilihan Ganda'" class="space-y-3 border-2 border-neo-black p-4 bg-neo-bg rounded-xl">
             <div class="flex items-center justify-between">
               <span class="font-display text-lg uppercase">Pilihan Jawaban (A/B/C/D)</span>
               <div class="flex items-center gap-2">
                 <span class="text-xs font-bold">Kunci:</span>
                 <select
                   v-model="formData.kunci_jawaban"
-                  class="px-2 py-1 border-2 border-neo-black bg-neo-yellow font-bold text-xs"
+                  class="px-2 py-1 border-2 border-neo-black bg-neo-yellow font-bold text-xs rounded-md"
                 >
                   <option value="A">Kunci A</option>
                   <option value="B">Kunci B</option>
@@ -551,25 +551,25 @@ const handleReSeed = async () => {
 
             <div class="space-y-2">
               <div class="flex items-center gap-2">
-                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0">A</span>
-                <input v-model="formData.opsiA" type="text" placeholder="Teks opsi A..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium" />
+                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0 rounded-md">A</span>
+                <input v-model="formData.opsiA" type="text" placeholder="Teks opsi A..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium rounded-lg" />
               </div>
               <div class="flex items-center gap-2">
-                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0">B</span>
-                <input v-model="formData.opsiB" type="text" placeholder="Teks opsi B..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium" />
+                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0 rounded-md">B</span>
+                <input v-model="formData.opsiB" type="text" placeholder="Teks opsi B..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium rounded-lg" />
               </div>
               <div class="flex items-center gap-2">
-                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0">C</span>
-                <input v-model="formData.opsiC" type="text" placeholder="Teks opsi C..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium" />
+                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0 rounded-md">C</span>
+                <input v-model="formData.opsiC" type="text" placeholder="Teks opsi C..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium rounded-lg" />
               </div>
               <div class="flex items-center gap-2">
-                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0">D</span>
-                <input v-model="formData.opsiD" type="text" placeholder="Teks opsi D..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium" />
+                <span class="w-8 h-8 flex items-center justify-center font-bold bg-neo-black text-white shrink-0 rounded-md">D</span>
+                <input v-model="formData.opsiD" type="text" placeholder="Teks opsi D..." required class="w-full p-2 bg-white border border-neo-black text-xs font-medium rounded-lg" />
               </div>
             </div>
           </div>
 
-          <div v-else class="p-3 bg-neo-blue/20 border-2 border-neo-black text-xs font-medium flex items-center gap-2">
+          <div v-else class="p-3 bg-neo-blue/20 border-2 border-neo-black text-xs font-medium flex items-center gap-2 rounded-xl">
             <span class="material-symbols-outlined text-lg shrink-0">lightbulb</span>
             <span>Untuk kategori <strong>Praktik</strong>, opsi secara otomatis ditetapkan sebagai <strong>'Bisa'</strong> dan <strong>'Belum Bisa'</strong> tanpa kunci jawaban tunggal.</span>
           </div>
@@ -579,14 +579,14 @@ const handleReSeed = async () => {
             <button
               type="button"
               @click="isModalOpen = false"
-              class="px-4 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-white shadow-neo cursor-pointer"
+              class="px-4 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-white shadow-neo cursor-pointer rounded-xl"
             >
               Batal
             </button>
             <button
               type="submit"
               :disabled="isSubmitting"
-              class="px-6 py-2.5 text-xs font-bold uppercase border-3 border-neo-black bg-neo-pink text-neo-black shadow-neo hover:shadow-neo-hover cursor-pointer flex items-center gap-1.5"
+              class="px-6 py-2.5 text-xs font-bold uppercase border-3 border-neo-black bg-neo-pink text-neo-black shadow-neo hover:shadow-neo-hover cursor-pointer flex items-center gap-1.5 rounded-xl font-bold"
             >
               <span v-if="isSubmitting">Menyimpan...</span>
               <span v-else class="flex items-center gap-1">
@@ -604,7 +604,7 @@ const handleReSeed = async () => {
       v-if="deleteConfirmItem"
       class="fixed inset-0 z-50 bg-neo-black/60 flex items-center justify-center p-4 backdrop-blur-sm"
     >
-      <div class="bg-white border-3 border-neo-black max-w-md w-full p-4 sm:p-6 shadow-neo space-y-4">
+      <div class="bg-white border-3 border-neo-black max-w-md w-full p-4 sm:p-6 shadow-neo rounded-3xl space-y-4">
         <h3 class="font-display text-2xl uppercase tracking-wider text-red-600 flex items-center gap-2">
           <span class="material-symbols-outlined text-2xl">warning</span>
           <span>Konfirmasi Hapus Soal</span>
@@ -612,19 +612,19 @@ const handleReSeed = async () => {
         <p class="text-sm font-medium">
           Apakah Anda yakin ingin menghapus <strong>Soal #{{ deleteConfirmItem.nomor }}</strong>?
         </p>
-        <p class="text-xs bg-neo-bg p-3 border border-neo-black italic">
+        <p class="text-xs bg-neo-bg p-3 border border-neo-black italic rounded-xl">
           "{{ deleteConfirmItem.pertanyaan }}"
         </p>
         <div class="flex justify-end gap-3 pt-2">
           <button
             @click="deleteConfirmItem = null"
-            class="px-4 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-white shadow-neo cursor-pointer"
+            class="px-4 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-white shadow-neo cursor-pointer rounded-xl"
           >
             Batal
           </button>
           <button
             @click="executeDelete"
-            class="px-5 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-[#ff6b6b] text-white shadow-neo cursor-pointer"
+            class="px-5 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-[#ff6b6b] text-white shadow-neo cursor-pointer rounded-xl"
           >
             Ya, Hapus Soal
           </button>

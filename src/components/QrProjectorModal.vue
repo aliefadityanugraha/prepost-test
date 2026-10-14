@@ -171,7 +171,7 @@ const closeModal = () => {
   >
     <div
       ref="modalRef"
-      class="bg-white border-4 border-neo-black shadow-neo-lg w-full max-w-4xl p-4 sm:p-8 space-y-6 relative print:border-none print:shadow-none print:p-4 transition-all"
+      class="bg-white border-4 border-neo-black shadow-neo-lg rounded-3xl w-full max-w-4xl p-4 sm:p-8 space-y-6 relative print:border-none print:shadow-none print:p-4 transition-all"
       :class="{
         'h-screen max-w-none rounded-none flex flex-col justify-between overflow-y-auto p-6 sm:p-10 bg-neo-bg': isFullscreen,
       }"
@@ -186,12 +186,12 @@ const closeModal = () => {
       <div class="border-b-3 border-neo-black pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
         <div class="space-y-1">
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="bg-neo-blue border-2 border-neo-black px-2 py-0.5 text-xs font-mono font-bold uppercase shadow-neo inline-flex items-center gap-1">
+            <span class="bg-neo-blue border-2 border-neo-black rounded-lg px-2 py-0.5 text-xs font-mono font-bold uppercase shadow-neo inline-flex items-center gap-1">
               <span class="material-symbols-outlined text-[15px]">qr_code_scanner</span>
               <span>SCAN TO JOIN</span>
             </span>
             <span
-              class="border-2 border-neo-black px-2.5 py-0.5 text-xs font-display uppercase tracking-wider shadow-neo font-bold inline-flex items-center gap-1"
+              class="border-2 border-neo-black rounded-lg px-2.5 py-0.5 text-xs font-display uppercase tracking-wider shadow-neo font-bold inline-flex items-center gap-1"
               :class="statusBadgeInfo.bgClass"
             >
               <span class="material-symbols-outlined text-[15px]">{{ statusBadgeInfo.icon }}</span>
@@ -210,7 +210,7 @@ const closeModal = () => {
         <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
           <button
             @click="toggleFullscreen"
-            class="px-3 py-1.5 border-2 border-neo-black bg-neo-yellow font-bold text-xs uppercase shadow-neo hover:bg-white transition-all flex items-center gap-1.5 cursor-pointer"
+            class="px-3 py-1.5 border-2 border-neo-black rounded-xl bg-neo-yellow font-bold text-xs uppercase shadow-neo hover:bg-white transition-all flex items-center gap-1.5 cursor-pointer"
             :title="isFullscreen ? 'Keluar Fullscreen' : 'Mode Layar Penuh Proyektor'"
           >
             <span class="material-symbols-outlined text-[16px]">{{ isFullscreen ? 'fullscreen_exit' : 'fullscreen' }}</span>
@@ -218,7 +218,7 @@ const closeModal = () => {
           </button>
           <button
             @click="closeModal"
-            class="px-3 py-1.5 border-2 border-neo-black bg-[#ff6b6b] text-white font-bold text-xs uppercase shadow-neo hover:bg-red-600 transition-all cursor-pointer flex items-center gap-1"
+            class="px-3 py-1.5 border-2 border-neo-black rounded-xl bg-[#ff6b6b] text-white font-bold text-xs uppercase shadow-neo hover:bg-red-600 transition-all cursor-pointer flex items-center gap-1"
           >
             <span class="material-symbols-outlined text-[16px]">close</span>
             <span>Tutup</span>
@@ -231,7 +231,7 @@ const closeModal = () => {
         <!-- QR Code Area (6 cols) -->
         <div class="md:col-span-6 flex flex-col items-center justify-center space-y-3">
           <div
-            class="relative bg-white border-4 border-neo-black p-4 sm:p-6 shadow-neo-lg flex items-center justify-center max-w-[340px] sm:max-w-[420px] w-full aspect-square overflow-hidden group"
+            class="relative bg-white border-4 border-neo-black rounded-2xl p-4 sm:p-6 shadow-neo-lg flex items-center justify-center max-w-[340px] sm:max-w-[420px] w-full aspect-square overflow-hidden group"
           >
             <!-- Scan Beam Effect -->
             <div
@@ -270,26 +270,26 @@ const closeModal = () => {
         <!-- Instructions & URL Controls (6 cols) -->
         <div class="md:col-span-6 space-y-5">
           <!-- 3 Steps Instructions -->
-          <div class="space-y-3 bg-neo-bg border-3 border-neo-black p-4 sm:p-5 shadow-neo">
+          <div class="space-y-3 bg-neo-bg border-3 border-neo-black rounded-2xl p-4 sm:p-5 shadow-neo">
             <h3 class="font-display text-lg uppercase tracking-wider text-neo-black flex items-center gap-2">
               <span class="material-symbols-outlined text-lg">checklist</span>
               <span>Langkah Akses Peserta:</span>
             </h3>
             <ol class="space-y-2.5 text-xs sm:text-sm font-medium text-neo-black">
               <li class="flex items-start gap-2.5">
-                <span class="bg-neo-black text-white font-mono font-bold w-5 h-5 rounded-none flex items-center justify-center shrink-0 text-xs">
+                <span class="bg-neo-black text-white font-mono font-bold w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs">
                   1
                 </span>
                 <span>Buka aplikasi <strong>Kamera</strong> atau <strong>Pemindai QR</strong> di HP.</span>
               </li>
               <li class="flex items-start gap-2.5">
-                <span class="bg-neo-black text-white font-mono font-bold w-5 h-5 rounded-none flex items-center justify-center shrink-0 text-xs">
+                <span class="bg-neo-black text-white font-mono font-bold w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs">
                   2
                 </span>
                 <span>Arahkan kamera ke <strong>QR Code</strong> di layar proyektor.</span>
               </li>
               <li class="flex items-start gap-2.5">
-                <span class="bg-neo-black text-white font-mono font-bold w-5 h-5 rounded-none flex items-center justify-center shrink-0 text-xs">
+                <span class="bg-neo-black text-white font-mono font-bold w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-xs">
                   3
                 </span>
                 <span>Isi <strong>Nama Lengkap & Kelas</strong> untuk langsung mulai!</span>
@@ -318,12 +318,12 @@ const closeModal = () => {
                 v-model="targetUrl"
                 :readonly="!isCustomUrl"
                 type="text"
-                class="flex-1 px-3 py-2 bg-neo-bg border-3 border-neo-black text-neo-black font-mono text-xs focus:bg-white focus:outline-none focus:shadow-neo transition-all truncate"
+                class="flex-1 px-3 py-2 bg-neo-bg border-3 border-neo-black rounded-xl text-neo-black font-mono text-xs focus:bg-white focus:outline-none focus:shadow-neo transition-all truncate"
                 :class="{ 'bg-white': isCustomUrl }"
               />
               <button
                 @click="copyUrl"
-                class="px-3.5 py-2 font-display text-xs uppercase tracking-wider border-3 border-neo-black shadow-neo active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer shrink-0 font-bold inline-flex items-center gap-1"
+                class="px-3.5 py-2 font-display text-xs uppercase tracking-wider border-3 border-neo-black rounded-xl shadow-neo active:translate-x-0.5 active:translate-y-0.5 transition-all cursor-pointer shrink-0 font-bold inline-flex items-center gap-1"
                 :class="copied ? 'bg-neo-green text-neo-black' : 'bg-neo-yellow text-neo-black hover:bg-white'"
               >
                 <span class="material-symbols-outlined text-[15px]">{{ copied ? 'check' : 'content_copy' }}</span>
@@ -340,14 +340,14 @@ const closeModal = () => {
           <div class="grid grid-cols-2 gap-2.5 pt-1 print:hidden">
             <button
               @click="downloadQr"
-              class="neo-button bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-neo-black border-3 border-neo-black shadow-neo hover:bg-neo-blue hover:text-neo-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              class="neo-button bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-neo-black border-3 border-neo-black rounded-xl shadow-neo hover:bg-neo-blue hover:text-neo-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span class="material-symbols-outlined text-[16px]">download</span>
               <span>Unduh PNG</span>
             </button>
             <button
               @click="printCard"
-              class="neo-button bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-neo-black border-3 border-neo-black shadow-neo hover:bg-neo-pink hover:text-neo-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              class="neo-button bg-white px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-neo-black border-3 border-neo-black rounded-xl shadow-neo hover:bg-neo-pink hover:text-neo-black transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span class="material-symbols-outlined text-[16px]">print</span>
               <span>Cetak Lembar Meja</span>
@@ -358,7 +358,7 @@ const closeModal = () => {
 
       <!-- Footer Info in Fullscreen -->
       <div v-if="isFullscreen" class="pt-4 border-t-3 border-neo-black flex items-center justify-between text-xs font-mono font-bold text-neo-black/75">
-        <span>Tekan <kbd class="px-1.5 py-0.5 border border-neo-black bg-white">ESC</kbd> untuk keluar layar penuh</span>
+        <span>Tekan <kbd class="px-1.5 py-0.5 border border-neo-black rounded bg-white">ESC</kbd> untuk keluar layar penuh</span>
         <span>Google Sites Portfolio Pre-Post Test Evaluation</span>
       </div>
     </div>

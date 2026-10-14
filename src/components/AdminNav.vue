@@ -30,7 +30,7 @@ const navLinks = [
 </script>
 
 <template>
-  <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden">
+  <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden rounded-2xl">
     <!-- 1. Window Control Chrome Header -->
     <div
       class="bg-neo-black text-neo-bg px-3 sm:px-4 py-1.5 flex items-center justify-between border-b-3 border-neo-black select-none text-[10px] sm:text-xs font-mono"
@@ -70,12 +70,12 @@ const navLinks = [
     >
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <span
-          class="bg-neo-yellow border-3 border-neo-black px-3 py-1 font-display text-xl sm:text-2xl uppercase tracking-wider shadow-neo shrink-0"
+          class="bg-neo-yellow border-3 border-neo-black px-3 py-1 font-display text-xl sm:text-2xl uppercase tracking-wider shadow-neo shrink-0 rounded-xl"
         >
           {{ title }}
         </span>
         <span
-          class="hidden md:inline-block font-mono text-[11px] font-bold uppercase text-neo-black/60 bg-white border border-neo-black px-2 py-0.5"
+          class="hidden md:inline-block font-mono text-[11px] font-bold uppercase text-neo-black/60 bg-white border border-neo-black px-2 py-0.5 rounded-md"
         >
           Workshop Google Sites
         </span>
@@ -85,7 +85,7 @@ const navLinks = [
         <!-- Button QR Proyektor Kelas -->
         <button
           @click="isQrModalOpen = true"
-          class="px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black bg-neo-yellow text-neo-black shadow-neo hover:bg-white hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 font-display tracking-wider"
+          class="px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black rounded-xl bg-neo-yellow text-neo-black shadow-neo hover:bg-white hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 font-display tracking-wider"
           title="Tampilkan QR Code untuk Proyektor Kelas"
         >
           <span class="material-symbols-outlined text-base">qr_code_2</span>
@@ -95,7 +95,7 @@ const navLinks = [
         <!-- Link Lihat Peserta -->
         <router-link
           to="/"
-          class="flex-1 sm:flex-initial text-center px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-blue transition-all shadow-neo hover:-translate-y-0.5 active:translate-y-0.5 whitespace-nowrap inline-flex items-center justify-center gap-1"
+          class="flex-1 sm:flex-initial text-center px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black rounded-xl bg-white hover:bg-neo-blue transition-all shadow-neo hover:-translate-y-0.5 active:translate-y-0.5 whitespace-nowrap inline-flex items-center justify-center gap-1"
         >
           <span class="material-symbols-outlined text-sm">visibility</span>
           <span>Halaman Peserta</span>
@@ -104,7 +104,7 @@ const navLinks = [
         <!-- Button Logout -->
         <button
           @click="handleLogout"
-          class="px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black bg-[#ff6b6b] text-white shadow-neo hover:bg-red-600 hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1 font-bold"
+          class="px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black rounded-xl bg-[#ff6b6b] text-white shadow-neo hover:bg-red-600 hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1 font-bold"
         >
           <span class="material-symbols-outlined text-sm">logout</span>
           <span>Keluar</span>
@@ -121,7 +121,7 @@ const navLinks = [
         :key="link.path"
         :to="link.path"
         :class="[
-          'px-3 sm:px-4 py-2 text-xs font-bold uppercase transition-all shrink-0 whitespace-nowrap inline-flex items-center gap-2',
+          'px-3 sm:px-4 py-2 text-xs font-bold uppercase transition-all shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-xl',
           route.path === link.path
             ? 'bg-neo-pink text-neo-black border-3 border-neo-black shadow-neo font-black -translate-y-0.5'
             : 'bg-neo-bg text-neo-black border-2 border-neo-black hover:bg-neo-yellow hover:shadow-neo hover:-translate-y-0.5'

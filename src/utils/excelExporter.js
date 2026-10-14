@@ -39,6 +39,18 @@ const getKunciJawaban = (bankSoalList, jenisTes, nomor) => {
  * - Waktu Submit
  */
 const buildDetailSheetAoa = (items, jenisTes, bankSoalList) => {
+  const pgSoalList = (bankSoalList || [])
+    .filter((s) => s.jenis_tes === jenisTes && s.kategori === 'Pilihan Ganda')
+    .sort((a, b) => (Number(a.nomor) || 0) - (Number(b.nomor) || 0))
+  const praktikSoalList = (bankSoalList || [])
+    .filter((s) => s.jenis_tes === jenisTes && s.kategori === 'Praktik')
+    .sort((a, b) => (Number(a.nomor) || 0) - (Number(b.nomor) || 0))
+
+  const countPg = pgSoalList.length || 15
+  const countPraktik = praktikSoalList.length || 5
+  const poinPerPg = Math.round((70 / countPg) * 10) / 10
+  const poinPerPraktik = Math.round((30 / countPraktik) * 10) / 10
+
   // Baris Header 1 (Grouping Header)
   const headerRow1 = [
     'No',
@@ -48,46 +60,26 @@ const buildDetailSheetAoa = (items, jenisTes, bankSoalList) => {
     'Total Skor (/100)',
     'Status Kelulusan',
     'Nilai PG (/70)',
-    'Benar PG (dr 7)',
+    `Benar PG (dr ${countPg})`,
     'Nilai Praktik (/30)',
-    'Bisa Praktik (dr 5)',
-    // Soal 1-7
-    'BAGIAN I: PILIHAN GANDA (Bobot 10 Poin / Butir)',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    // Soal 8-12
-    'BAGIAN II: PENILAIAN DIRI PRAKTIK (Bobot 6 Poin / Butir)',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
+    `Bisa Praktik (dr ${countPraktik})`,
+    `BAGIAN I: PILIHAN GANDA (${countPg} Butir, Bobot ~${poinPerPg} Poin/Soal)`,
+    ...Array(Math.max(0, countPg * 3 - 1)).fill(''),
+    `BAGIAN II: PENILAIAN DIRI PRAKTIK (${countPraktik} Butir, Bobot ~${poinPerPraktik} Poin/Soal)`,
+    ...Array(Math.max(0, countPraktik * 2 - 1)).fill(''),
     'Waktu Submit',
   ]
 
   // Baris Header 2 (Nama Kolom Spesifik)
+  const pgCols = []
+  pgSoalList.forEach((s) => {
+    pgCols.push(`Jwb No ${s.nomor}`, `Kunci No ${s.nomor}`, `Skor No ${s.nomor}`)
+  })
+  const praktikCols = []
+  praktikSoalList.forEach((s) => {
+    praktikCols.push(`Jwb No ${s.nomor}`, `Skor No ${s.nomor}`)
+  })
+
   const headerRow2 = [
     'No',
     'Nama Peserta',
@@ -99,66 +91,47 @@ const buildDetailSheetAoa = (items, jenisTes, bankSoalList) => {
     'Benar PG',
     'Skor Praktik',
     'Bisa Praktik',
-    // Kolom Soal PG 1 - 7
-    'Jwb No 1',
-    'Kunci No 1',
-    'Skor No 1',
-    'Jwb No 2',
-    'Kunci No 2',
-    'Skor No 2',
-    'Jwb No 3',
-    'Kunci No 3',
-    'Skor No 3',
-    'Jwb No 4',
-    'Kunci No 4',
-    'Skor No 4',
-    'Jwb No 5',
-    'Kunci No 5',
-    'Skor No 5',
-    'Jwb No 6',
-    'Kunci No 6',
-    'Skor No 6',
-    'Jwb No 7',
-    'Kunci No 7',
-    'Skor No 7',
-    // Kolom Soal Praktik 8 - 12
-    'Jwb No 8',
-    'Skor No 8',
-    'Jwb No 9',
-    'Skor No 9',
-    'Jwb No 10',
-    'Skor No 10',
-    'Jwb No 11',
-    'Skor No 11',
-    'Jwb No 12',
-    'Skor No 12',
+    ...pgCols,
+    ...praktikCols,
     'Waktu Submit',
   ]
 
   const rows = items.map((item, idx) => {
-    const skorTotal = Number(item.skor_total) || 0
+    let skorTotal = Number(item.skor_total) || 0
+    let skorPg = Number(item.skor_pg) || 0
+    let skorPraktik = Number(item.skor_praktik) || 0
+    let benarPg = Number(item.benar_pg) || 0
+    let bisaPraktik = Number(item.bisa_praktik) || 0
+
+    // Normalisasi jika ada data lama yang melebihi 100/70/30
+    if (skorTotal > 100 || skorPg > 70 || skorPraktik > 30) {
+      benarPg = item.benar_pg !== undefined ? Number(item.benar_pg) : Math.min(countPg, Math.round(skorPg / 10))
+      bisaPraktik = item.bisa_praktik !== undefined ? Number(item.bisa_praktik) : Math.min(countPraktik, Math.round(skorPraktik / 6))
+      skorPg = Math.min(70, Math.round((benarPg / countPg) * 70))
+      skorPraktik = Math.min(30, Math.round((bisaPraktik / countPraktik) * 30))
+      skorTotal = Math.min(100, Math.max(0, skorPg + skorPraktik))
+    }
+
     const statusKelulusan = skorTotal >= 70 ? 'TUNTAS' : 'BELUM TUNTAS'
-    const skorPg = Number(item.skor_pg) || 0
-    const benarPg = Number(item.benar_pg) || 0
-    const skorPraktik = Number(item.skor_praktik) || 0
-    const bisaPraktik = Number(item.bisa_praktik) || 0
 
-    // Rincian Pilihan Ganda (1 - 7)
+    // Rincian Pilihan Ganda
     const detailPg = []
-    for (let no = 1; no <= 7; no++) {
-      const jwb = item.jawaban?.[no] || item.jawaban?.[String(no)] || '-'
-      const kunci = getKunciJawaban(bankSoalList, jenisTes, no) || '-'
-      const poin = jwb !== '-' && jwb === kunci ? 10 : 0
+    pgSoalList.forEach((s) => {
+      const jwb = item.jawaban?.[s.nomor] ?? item.jawaban?.[String(s.nomor)] ?? '-'
+      const kunci = s.kunci_jawaban || getKunciJawaban(bankSoalList, jenisTes, s.nomor) || '-'
+      const isCorrect = jwb !== '-' && String(jwb).trim().toUpperCase() === String(kunci).trim().toUpperCase()
+      const poin = isCorrect ? poinPerPg : 0
       detailPg.push(jwb, kunci, poin)
-    }
+    })
 
-    // Rincian Penilaian Praktik (8 - 12)
+    // Rincian Penilaian Praktik
     const detailPraktik = []
-    for (let no = 8; no <= 12; no++) {
-      const jwb = item.jawaban?.[no] || item.jawaban?.[String(no)] || '-'
-      const poin = jwb === 'Bisa' ? 6 : 0
+    praktikSoalList.forEach((s) => {
+      const jwb = item.jawaban?.[s.nomor] ?? item.jawaban?.[String(s.nomor)] ?? '-'
+      const isBisa = jwb === 'Bisa'
+      const poin = isBisa ? poinPerPraktik : 0
       detailPraktik.push(jwb, poin)
-    }
+    })
 
     return [
       idx + 1,
@@ -183,8 +156,8 @@ const buildDetailSheetAoa = (items, jenisTes, bankSoalList) => {
 /**
  * Mengatur lebar kolom agar rapi saat dibuka di Microsoft Excel
  */
-const setColumnWidths = (ws) => {
-  ws['!cols'] = [
+const setColumnWidths = (ws, numCols = 30) => {
+  const baseCols = [
     { wch: 5 }, // No
     { wch: 26 }, // Nama Peserta
     { wch: 14 }, // Kelas
@@ -195,22 +168,15 @@ const setColumnWidths = (ws) => {
     { wch: 12 }, // Benar PG
     { wch: 14 }, // Nilai Praktik
     { wch: 14 }, // Bisa Praktik
-    // Soal 1-7 (Jwb, Kunci, Skor)
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 },
-    // Soal 8-12 (Jwb, Skor)
-    { wch: 14 }, { wch: 10 },
-    { wch: 14 }, { wch: 10 },
-    { wch: 14 }, { wch: 10 },
-    { wch: 14 }, { wch: 10 },
-    { wch: 14 }, { wch: 10 },
-    { wch: 22 }, // Waktu Submit
   ]
+
+  const extraCols = []
+  for (let i = baseCols.length; i < numCols - 1; i++) {
+    extraCols.push({ wch: 11 })
+  }
+  extraCols.push({ wch: 22 }) // Waktu Submit
+
+  ws['!cols'] = [...baseCols, ...extraCols]
 }
 
 /**

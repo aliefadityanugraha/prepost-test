@@ -1,15 +1,15 @@
 /**
- * Menghitung skor instrumen Pre & Post Test Workshop Google Sites secara deterministik dan murni:
- * - Pilihan Ganda: 10 poin per jawaban benar (maks 70 poin untuk 7 butir)
- * - Penilaian Diri (Praktik): 6 poin per jawaban 'Bisa' (maks 30 poin untuk 5 butir)
- * - Total Skor Maksimal: 100 poin
+ * Menghitung skor instrumen Pre & Post Test Workshop Google Sites secara deterministik dan proporsional:
+ * - Pilihan Ganda: Maksimal 70 poin (proporsional terhadap jumlah butir PG)
+ * - Penilaian Diri (Praktik): Maksimal 30 poin (proporsional terhadap jumlah butir Praktik)
+ * - Total Skor Maksimal: 100 poin (tidak akan pernah melebihi 100)
  *
  * @param {Array} soalList - Array daftar soal dari bank_soal
  * @param {Object} jawaban - Objek map jawaban peserta (key: nomor_soal, value: opsi/jawaban)
  * @returns {Object} Rincian skor PG, Praktik, dan Total Skor
  */
 export function calculateScore(soalList = [], jawaban = {}) {
-  if (!Array.isArray(soalList)) {
+  if (!Array.isArray(soalList) || soalList.length === 0) {
     return {
       skor_pg: 0,
       benar_pg: 0,
@@ -23,41 +23,55 @@ export function calculateScore(soalList = [], jawaban = {}) {
 
   const userJawaban = jawaban || {}
 
-  let skorPG = 0
   let benarPG = 0
   let totalPG = 0
 
-  let skorPraktik = 0
   let bisaPraktik = 0
   let totalPraktik = 0
 
   soalList.forEach((soal) => {
     const nomor = soal.nomor
-    const userAns = userJawaban[nomor]
+    const userAns = userJawaban[nomor] !== undefined ? userJawaban[nomor] : userJawaban[String(nomor)]
 
     if (soal.kategori === 'Pilihan Ganda') {
       totalPG++
-      if (userAns !== undefined && userAns !== null && userAns === soal.kunci_jawaban) {
-        skorPG += 10
+      if (userAns !== undefined && userAns !== null && String(userAns).trim().toUpperCase() === String(soal.kunci_jawaban).trim().toUpperCase()) {
         benarPG++
       }
     } else if (soal.kategori === 'Praktik') {
       totalPraktik++
       if (userAns === 'Bisa') {
-        skorPraktik += 6
         bisaPraktik++
       }
     }
   })
 
-  // Pastikan batas skor tidak melebihi nilai maksimal
-  const skorTotal = skorPG + skorPraktik
+  // Hitung skor secara proporsional berbobot (PG: 70%, Praktik: 30%, Total: 100%)
+  let skorPG = 0
+  let skorPraktik = 0
+
+  if (totalPG > 0 && totalPraktik > 0) {
+    skorPG = Math.round((benarPG / totalPG) * 70)
+    skorPraktik = Math.round((bisaPraktik / totalPraktik) * 30)
+  } else if (totalPG > 0) {
+    skorPG = Math.round((benarPG / totalPG) * 100)
+  } else if (totalPraktik > 0) {
+    skorPraktik = Math.round((bisaPraktik / totalPraktik) * 100)
+  }
+
+  // Batasi agar skor PG <= 70 (jika ada praktik) atau <= 100, skor Praktik <= 30, dan Total <= 100
+  const maxAllowedPG = totalPraktik > 0 ? 70 : 100
+  const maxAllowedPraktik = totalPG > 0 ? 30 : 100
+
+  const finalPG = Math.min(maxAllowedPG, Math.max(0, skorPG))
+  const finalPraktik = Math.min(maxAllowedPraktik, Math.max(0, skorPraktik))
+  const skorTotal = Math.min(100, Math.max(0, finalPG + finalPraktik))
 
   return {
-    skor_pg: skorPG,
+    skor_pg: finalPG,
     benar_pg: benarPG,
     total_pg: totalPG,
-    skor_praktik: skorPraktik,
+    skor_praktik: finalPraktik,
     bisa_praktik: bisaPraktik,
     total_praktik: totalPraktik,
     skor_total: skorTotal,

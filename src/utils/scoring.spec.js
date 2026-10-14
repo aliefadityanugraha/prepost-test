@@ -110,4 +110,55 @@ describe('Unit Test: Algoritma Kalkulasi Skor Pre & Post Test Workshop Google Si
     expect(hasilNull.skor_pg).toBe(0)
     expect(hasilNull.skor_praktik).toBe(0)
   })
+
+  it('6. Harus menghasilkan nilai maksimal tepat 100 (tidak boleh lebih) pada dataset 20 soal (15 PG + 5 Praktik)', () => {
+    // 15 Pilihan Ganda + 5 Praktik
+    const bank20Soal = []
+    const jawabanSempurna20 = {}
+
+    for (let i = 1; i <= 15; i++) {
+      bank20Soal.push({ nomor: i, kategori: 'Pilihan Ganda', kunci_jawaban: 'A' })
+      jawabanSempurna20[i] = 'A'
+    }
+    for (let i = 16; i <= 20; i++) {
+      bank20Soal.push({ nomor: i, kategori: 'Praktik', opsi: ['Bisa', 'Belum Bisa'] })
+      jawabanSempurna20[i] = 'Bisa'
+    }
+
+    const hasil = calculateScore(bank20Soal, jawabanSempurna20)
+
+    expect(hasil.benar_pg).toBe(15)
+    expect(hasil.total_pg).toBe(15)
+    expect(hasil.skor_pg).toBe(70) // Maksimal 70
+    expect(hasil.bisa_praktik).toBe(5)
+    expect(hasil.total_praktik).toBe(5)
+    expect(hasil.skor_praktik).toBe(30) // Maksimal 30
+    expect(hasil.skor_total).toBe(100) // TEPAT 100, TIDAK BOLEH 180!
+    expect(hasil.skor_total).toBeLessThanOrEqual(100)
+  })
+
+  it('7. Harus menghasilkan nilai proporsional <= 100 saat sebagian dijawab benar pada dataset 20 soal', () => {
+    const bank20Soal = []
+    const jawabanSebagian = {}
+
+    for (let i = 1; i <= 15; i++) {
+      bank20Soal.push({ nomor: i, kategori: 'Pilihan Ganda', kunci_jawaban: 'A' })
+      // Hanya 10 yang benar
+      jawabanSebagian[i] = i <= 10 ? 'A' : 'B'
+    }
+    for (let i = 16; i <= 20; i++) {
+      bank20Soal.push({ nomor: i, kategori: 'Praktik', opsi: ['Bisa', 'Belum Bisa'] })
+      // Hanya 3 yang 'Bisa'
+      jawabanSebagian[i] = i <= 18 ? 'Bisa' : 'Belum Bisa'
+    }
+
+    const hasil = calculateScore(bank20Soal, jawabanSebagian)
+
+    expect(hasil.benar_pg).toBe(10)
+    expect(hasil.skor_pg).toBe(47) // Math.round((10/15)*70) = 47
+    expect(hasil.bisa_praktik).toBe(3)
+    expect(hasil.skor_praktik).toBe(18) // Math.round((3/5)*30) = 18
+    expect(hasil.skor_total).toBe(65) // 47 + 18 = 65 <= 100
+    expect(hasil.skor_total).toBeLessThanOrEqual(100)
+  })
 })

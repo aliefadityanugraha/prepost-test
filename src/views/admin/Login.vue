@@ -67,7 +67,7 @@ const handleLogin = async () => {
     <div class="flex items-center justify-between">
       <router-link
         to="/"
-        class="inline-flex items-center gap-1.5 border-3 border-neo-black bg-white px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-neo-yellow transition-all"
+        class="inline-flex items-center gap-1.5 border-3 border-neo-black bg-white rounded-lg px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-neo-yellow transition-all"
       >
         <span class="material-symbols-outlined text-[14px]">arrow_back</span>
         <span>Kembali ke Halaman Peserta</span>
@@ -82,12 +82,12 @@ const handleLogin = async () => {
 
     <!-- Login Card -->
     <div
-      class="bg-white border-3 border-neo-black p-4 sm:p-8 md:p-10 shadow-neo space-y-5 sm:space-y-6"
+      class="bg-white border-3 border-neo-black rounded-2xl p-4 sm:p-8 md:p-10 shadow-neo space-y-5 sm:space-y-6"
     >
       <!-- Header -->
       <div class="border-b-3 border-neo-black pb-4 text-center space-y-2">
         <div
-          class="w-12 h-12 mx-auto bg-neo-blue border-3 border-neo-black shadow-neo flex items-center justify-center font-display text-neo-black"
+          class="w-12 h-12 mx-auto bg-neo-blue border-3 border-neo-black rounded-xl shadow-neo flex items-center justify-center font-display text-neo-black"
         >
           <span class="material-symbols-outlined text-2xl"
             >admin_panel_settings</span
@@ -106,7 +106,7 @@ const handleLogin = async () => {
       <!-- Alerts -->
       <div
         v-if="errorMessage"
-        class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black font-bold text-xs shadow-neo leading-relaxed flex items-center gap-2"
+        class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black rounded-xl font-bold text-xs shadow-neo leading-relaxed flex items-center gap-2"
       >
         <span class="material-symbols-outlined text-base shrink-0"
           >warning</span
@@ -130,7 +130,7 @@ const handleLogin = async () => {
             type="email"
             placeholder="admin@workshop.id"
             required
-            class="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-neo-bg border-3 border-neo-black text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
+            class="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-neo-bg border-3 border-neo-black rounded-xl text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
           />
         </div>
 
@@ -149,7 +149,7 @@ const handleLogin = async () => {
             placeholder="••••••••"
             required
             minlength="6"
-            class="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-neo-bg border-3 border-neo-black text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
+            class="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-neo-bg border-3 border-neo-black rounded-xl text-neo-black font-medium text-sm focus:bg-white focus:outline-none focus:shadow-neo transition-all"
           />
         </div>
 
@@ -157,7 +157,7 @@ const handleLogin = async () => {
         <button
           type="submit"
           :disabled="isLoading"
-          class="w-full py-3 sm:py-3.5 px-4 sm:px-6 font-display text-xl sm:text-2xl uppercase tracking-wider border-3 border-neo-black text-neo-black bg-neo-pink shadow-neo hover:shadow-neo-hover active:shadow-neo-active hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed font-bold"
+          class="w-full py-3 sm:py-3.5 px-4 sm:px-6 font-display text-xl sm:text-2xl uppercase tracking-wider border-3 border-neo-black rounded-xl text-neo-black bg-neo-pink shadow-neo hover:shadow-neo-hover active:shadow-neo-active hover:-translate-x-0.5 hover:-translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed font-bold"
         >
           <span
             v-if="isLoading"

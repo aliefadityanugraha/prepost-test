@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import AdminNav from '../../components/AdminNav.vue'
 import QrProjectorModal from '../../components/QrProjectorModal.vue'
 import { db } from '../../firebase'
-import { collection, getDocs, orderBy, query, writeBatch } from 'firebase/firestore'
+import { collection, getDocs, orderBy, query, writeBatch, doc, updateDoc } from 'firebase/firestore'
 import { useAuthStore } from '../../stores/authStore'
 import * as XLSX from 'xlsx'
 import { allBankSoal } from '../../utils/seeder'
@@ -31,6 +31,32 @@ onMounted(async () => {
   await fetchEvaluasi()
 })
 
+// Helper untuk normalisasi nilai jika ada data masa lalu yang melebihi batas 100
+const sanitizeEvaluasiItem = (item) => {
+  let skor_total = Number(item.skor_total) || 0
+  let skor_pg = Number(item.skor_pg) || 0
+  let skor_praktik = Number(item.skor_praktik) || 0
+  const total_pg = Number(item.total_pg) || 15
+  const total_praktik = Number(item.total_praktik) || 5
+
+  if (skor_total > 100 || skor_pg > 70 || skor_praktik > 30) {
+    const benar_pg = item.benar_pg !== undefined ? Number(item.benar_pg) : Math.min(total_pg, Math.round(skor_pg / 10))
+    const bisa_praktik = item.bisa_praktik !== undefined ? Number(item.bisa_praktik) : Math.min(total_praktik, Math.round(skor_praktik / 6))
+    skor_pg = Math.min(70, Math.round((benar_pg / total_pg) * 70))
+    skor_praktik = Math.min(30, Math.round((bisa_praktik / total_praktik) * 30))
+    skor_total = Math.min(100, Math.max(0, skor_pg + skor_praktik))
+  }
+
+  return {
+    ...item,
+    skor_pg,
+    skor_praktik,
+    skor_total: Math.min(100, Math.max(0, skor_total)),
+    total_pg,
+    total_praktik,
+  }
+}
+
 const fetchEvaluasi = async () => {
   isLoading.value = true
   errorMessage.value = ''
@@ -47,7 +73,20 @@ const fetchEvaluasi = async () => {
 
     const items = []
     snapshot.forEach((docSnap) => {
-      items.push({ id: docSnap.id, ...docSnap.data() })
+      const rawData = { id: docSnap.id, ...docSnap.data() }
+      const cleanData = sanitizeEvaluasiItem(rawData)
+      items.push(cleanData)
+
+      // Otomatis bersihkan di Firestore jika data tersimpan sebelumnya memiliki nilai > 100
+      if (rawData.skor_total > 100 || rawData.skor_pg > 70 || rawData.skor_praktik > 30) {
+        try {
+          updateDoc(doc(db, 'evaluasi_peserta', docSnap.id), {
+            skor_pg: cleanData.skor_pg,
+            skor_praktik: cleanData.skor_praktik,
+            skor_total: cleanData.skor_total,
+          }).catch(() => {})
+        } catch (_) {}
+      }
     })
 
     listEvaluasi.value = items
@@ -192,9 +231,9 @@ const executeResetData = async () => {
     <AdminNav title="HASIL EVALUASI SISWA" />
 
     <!-- Header Section -->
-    <header class="bg-neo-yellow border-3 border-neo-black p-4 sm:p-8 shadow-neo flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+    <header class="bg-neo-yellow border-3 border-neo-black rounded-2xl p-4 sm:p-8 shadow-neo flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
       <div class="space-y-2">
-        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black shadow-neo">
+        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black rounded-lg shadow-neo">
           Workshop Pembuatan Website Portfolio dengan Google Sites
         </div>
         <h1 class="font-display text-3xl sm:text-5xl md:text-6xl uppercase tracking-wider text-neo-black leading-none">
@@ -250,7 +289,7 @@ const executeResetData = async () => {
     </header>
 
     <!-- Success Notification Alert -->
-    <div v-if="successNotification" class="p-3.5 sm:p-4 bg-neo-green text-neo-black border-3 border-neo-black font-bold text-xs sm:text-sm shadow-neo flex items-center justify-between gap-4">
+    <div v-if="successNotification" class="p-3.5 sm:p-4 bg-neo-green text-neo-black border-3 border-neo-black rounded-xl font-bold text-xs sm:text-sm shadow-neo flex items-center justify-between gap-4">
       <div class="flex items-center gap-2">
         <span class="material-symbols-outlined text-base">check_circle</span>
         <span>{{ successNotification }}</span>
@@ -261,14 +300,14 @@ const executeResetData = async () => {
     </div>
 
     <!-- Error Alert -->
-    <div v-if="errorMessage" class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black font-bold text-xs sm:text-sm shadow-neo flex items-center gap-2">
+    <div v-if="errorMessage" class="p-3.5 sm:p-4 bg-[#ff6b6b] text-white border-3 border-neo-black rounded-xl font-bold text-xs sm:text-sm shadow-neo flex items-center gap-2">
       <span class="material-symbols-outlined text-base">warning</span>
       <span>{{ errorMessage }}</span>
     </div>
 
     <!-- Statistik Ringkas (Neo Brutalism Cards) -->
     <section class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-6">
-      <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+      <div class="bg-white border-3 border-neo-black rounded-2xl p-3.5 sm:p-5 shadow-neo">
         <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60 block truncate">Total Peserta</span>
         <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
           {{ totalPeserta }}
@@ -276,7 +315,7 @@ const executeResetData = async () => {
         <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/70 mt-1.5 block">Siswa Terekam</span>
       </div>
 
-      <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+      <div class="bg-white border-3 border-neo-black rounded-2xl p-3.5 sm:p-5 shadow-neo">
         <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60 block truncate">Rata-Rata Nilai</span>
         <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
           {{ rataRataSkor }} <span class="text-base sm:text-xl font-sans text-neo-black/40">/ 100</span>
@@ -284,7 +323,7 @@ const executeResetData = async () => {
         <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/70 mt-1.5 block truncate">Mean Keseluruhan</span>
       </div>
 
-      <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+      <div class="bg-white border-3 border-neo-black rounded-2xl p-3.5 sm:p-5 shadow-neo">
         <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60 block truncate">Skor Tertinggi</span>
         <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-green mt-1 leading-none">
           {{ skorTertinggi }}
@@ -292,7 +331,7 @@ const executeResetData = async () => {
         <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/70 mt-1.5 block">Skor Terbaik</span>
       </div>
 
-      <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
+      <div class="bg-white border-3 border-neo-black rounded-2xl p-3.5 sm:p-5 shadow-neo">
         <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60 block truncate">Skor Terendah</span>
         <div class="font-display text-3xl sm:text-4xl md:text-5xl text-[#ff6b6b] mt-1 leading-none">
           {{ skorTerendah }}
@@ -302,14 +341,14 @@ const executeResetData = async () => {
     </section>
 
     <!-- Filter & Search Controls -->
-    <div class="bg-white border-3 border-neo-black p-3.5 sm:p-6 shadow-neo flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
+    <div class="bg-white border-3 border-neo-black rounded-2xl p-3.5 sm:p-6 shadow-neo flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
       <!-- Search Input -->
       <div class="w-full md:w-80">
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Cari nama atau kelas peserta..."
-          class="w-full px-3.5 sm:px-4 py-2 sm:py-2.5 bg-neo-bg border-3 border-neo-black text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:shadow-neo transition-all"
+          class="w-full px-3.5 sm:px-4 py-2 sm:py-2.5 bg-neo-bg border-3 border-neo-black rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:shadow-neo transition-all"
         />
       </div>
 
@@ -321,7 +360,7 @@ const executeResetData = async () => {
           :key="jenis"
           @click="filterJenis = jenis"
           :class="[
-            'px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold uppercase border-2 border-neo-black transition-all cursor-pointer shrink-0',
+            'px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold uppercase border-2 border-neo-black rounded-lg transition-all cursor-pointer shrink-0',
             filterJenis === jenis ? 'bg-neo-pink text-neo-black shadow-neo' : 'bg-neo-bg hover:bg-white'
           ]"
         >
@@ -331,7 +370,7 @@ const executeResetData = async () => {
     </div>
 
     <!-- TABEL UTAMA (HTML Table dengan Border Tebal Hitam & Header Warna Cerah Khas Neo Brutalism) -->
-    <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden">
+    <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden rounded-2xl">
       <div class="overflow-x-auto">
         <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[740px]">
           <!-- Header Cerah Khas Neo Brutalism -->
@@ -395,7 +434,7 @@ const executeResetData = async () => {
               <td class="p-4 border-r-3 border-neo-black text-center">
                 <span
                   :class="[
-                    'px-2.5 py-1 font-mono text-xs font-bold border-2 border-neo-black uppercase shadow-neo inline-block',
+                    'px-2.5 py-1 font-mono text-xs font-bold border-2 border-neo-black rounded-md uppercase shadow-neo inline-block',
                     item.jenis_tes === 'Pre-Test' ? 'bg-neo-blue text-neo-black' : 'bg-neo-green text-neo-black'
                   ]"
                 >
@@ -419,7 +458,7 @@ const executeResetData = async () => {
               <td class="p-4 border-r-3 border-neo-black text-center bg-neo-yellow/30">
                 <span
                   :class="[
-                    'font-display text-2xl px-3 py-1 border-2 border-neo-black shadow-neo inline-block',
+                    'font-display text-2xl px-3 py-1 border-2 border-neo-black rounded-lg shadow-neo inline-block',
                     (item.skor_total || 0) >= 80 ? 'bg-neo-green text-neo-black' :
                     (item.skor_total || 0) >= 70 ? 'bg-neo-blue text-neo-black' : 'bg-neo-yellow text-neo-black'
                   ]"
@@ -437,7 +476,7 @@ const executeResetData = async () => {
               <td class="p-4 text-center">
                 <button
                   @click="selectedRow = item"
-                  class="border-2 border-neo-black bg-white px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-neo-yellow transition-all cursor-pointer inline-flex items-center gap-1"
+                  class="border-2 border-neo-black bg-white rounded-lg px-3 py-1 text-xs font-bold uppercase shadow-neo hover:bg-neo-yellow transition-all cursor-pointer inline-flex items-center gap-1"
                 >
                   <span class="material-symbols-outlined text-[14px]">visibility</span>
                   <span>Detail</span>
@@ -460,10 +499,10 @@ const executeResetData = async () => {
       v-if="selectedRow"
       class="fixed inset-0 z-50 bg-neo-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
     >
-      <div class="bg-white border-3 border-neo-black max-w-xl w-full p-4 sm:p-8 shadow-neo max-h-[90vh] overflow-y-auto space-y-4 sm:space-y-6">
+      <div class="bg-white border-3 border-neo-black rounded-3xl max-w-xl w-full p-4 sm:p-8 shadow-neo max-h-[90vh] overflow-y-auto space-y-4 sm:space-y-6">
         <div class="flex items-center justify-between border-b-3 border-neo-black pb-3 sm:pb-4 gap-2">
           <div class="min-w-0">
-            <span class="bg-neo-pink text-neo-black px-2 py-0.5 border border-neo-black font-mono text-[10px] sm:text-xs font-bold uppercase inline-block">
+            <span class="bg-neo-pink text-neo-black px-2 py-0.5 border border-neo-black rounded-md font-mono text-[10px] sm:text-xs font-bold uppercase inline-block">
               Rincian Jawaban
             </span>
             <h3 class="font-display text-2xl sm:text-3xl uppercase tracking-wider mt-1 truncate">
@@ -475,7 +514,7 @@ const executeResetData = async () => {
           </div>
           <button
             @click="selectedRow = null"
-            class="w-9 h-9 sm:w-10 sm:h-10 border-3 border-neo-black bg-[#ff6b6b] text-white font-display shadow-neo hover:bg-red-600 transition-colors cursor-pointer shrink-0 flex items-center justify-center"
+            class="w-9 h-9 sm:w-10 sm:h-10 border-3 border-neo-black rounded-xl bg-[#ff6b6b] text-white font-display shadow-neo hover:bg-red-600 transition-colors cursor-pointer shrink-0 flex items-center justify-center"
           >
             <span class="material-symbols-outlined text-xl sm:text-2xl">close</span>
           </button>
@@ -483,31 +522,37 @@ const executeResetData = async () => {
 
         <!-- Scores Grid -->
         <div class="grid grid-cols-3 gap-2 sm:gap-3 text-center">
-          <div class="p-2 sm:p-3 border-2 border-neo-black bg-neo-bg">
+          <div class="p-2 sm:p-3 border-2 border-neo-black rounded-xl bg-neo-bg">
             <span class="text-[9px] sm:text-[10px] font-bold uppercase block truncate">Skor PG</span>
             <span class="font-display text-lg sm:text-2xl leading-tight">{{ selectedRow.skor_pg || 0 }} / 70</span>
           </div>
-          <div class="p-2 sm:p-3 border-2 border-neo-black bg-neo-bg">
+          <div class="p-2 sm:p-3 border-2 border-neo-black rounded-xl bg-neo-bg">
             <span class="text-[9px] sm:text-[10px] font-bold uppercase block truncate">Praktik</span>
             <span class="font-display text-lg sm:text-2xl leading-tight">{{ selectedRow.skor_praktik || 0 }} / 30</span>
           </div>
-          <div class="p-2 sm:p-3 border-2 border-neo-black bg-neo-yellow font-bold">
+          <div class="p-2 sm:p-3 border-2 border-neo-black rounded-xl bg-neo-yellow font-bold">
             <span class="text-[9px] sm:text-[10px] font-bold uppercase block truncate">Total</span>
             <span class="font-display text-lg sm:text-2xl leading-tight">{{ selectedRow.skor_total || 0 }} / 100</span>
           </div>
         </div>
 
+        <!-- Info Tambahan: Durasi & Timestamp -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs font-mono bg-neo-bg border-2 border-neo-black rounded-xl p-2.5 gap-1.5">
+          <span>⏱️ Durasi Pengerjaan: <strong>{{ selectedRow.durasi_format || '-' }}</strong></span>
+          <span>📅 Selesai: <strong>{{ formatDate(selectedRow.created_at || selectedRow.waktu_selesai) }}</strong></span>
+        </div>
+
         <!-- Jawaban Details -->
         <div class="space-y-2">
           <h4 class="font-display text-lg sm:text-xl uppercase tracking-wide">Pilihan Jawaban Peserta:</h4>
-          <div class="bg-neo-bg border-2 border-neo-black p-3 sm:p-4 font-mono text-xs space-y-1.5 max-h-56 overflow-y-auto">
+          <div class="bg-neo-bg border-2 border-neo-black rounded-xl p-3 sm:p-4 font-mono text-xs space-y-1.5 max-h-56 overflow-y-auto">
             <div
               v-for="(ans, no) in selectedRow.jawaban || {}"
               :key="no"
               class="flex items-center justify-between border-b border-neo-black/20 pb-1"
             >
               <span>Soal No #{{ no }}:</span>
-              <span class="font-bold bg-white px-2 py-0.5 border border-neo-black">{{ ans }}</span>
+              <span class="font-bold bg-white px-2 py-0.5 border border-neo-black rounded-md">{{ ans }}</span>
             </div>
             <p v-if="!selectedRow.jawaban || Object.keys(selectedRow.jawaban).length === 0" class="text-neo-black/60 italic">
               Data rincian butir tidak tercatat secara lengkap.
@@ -517,7 +562,7 @@ const executeResetData = async () => {
 
         <button
           @click="selectedRow = null"
-          class="w-full py-3 border-3 border-neo-black bg-neo-pink font-display text-lg sm:text-xl uppercase tracking-wider shadow-neo cursor-pointer"
+          class="w-full py-3 border-3 border-neo-black rounded-xl bg-neo-pink font-display text-lg sm:text-xl uppercase tracking-wider shadow-neo cursor-pointer"
         >
           Tutup Detail
         </button>
@@ -529,18 +574,18 @@ const executeResetData = async () => {
       v-if="isResetModalOpen"
       class="fixed inset-0 z-50 bg-neo-black/60 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
     >
-      <div class="bg-white border-3 border-neo-black max-w-lg w-full p-4 sm:p-8 shadow-neo space-y-5">
+      <div class="bg-white border-3 border-neo-black rounded-3xl max-w-lg w-full p-4 sm:p-8 shadow-neo space-y-5">
         <!-- Modal Header -->
         <div class="flex items-center justify-between border-b-3 border-neo-black pb-3 gap-2">
           <div class="flex items-center gap-2">
-            <span class="w-4 h-4 bg-[#ff6b6b] border-2 border-neo-black"></span>
+            <span class="w-4 h-4 bg-[#ff6b6b] border-2 border-neo-black rounded-sm"></span>
             <h3 class="font-display text-2xl sm:text-3xl uppercase tracking-wider text-red-600 leading-none">
               Reset Data Uji Coba
             </h3>
           </div>
           <button
             @click="isResetModalOpen = false"
-            class="w-8 h-8 border-2 border-neo-black bg-white hover:bg-[#ff6b6b] hover:text-white cursor-pointer flex items-center justify-center"
+            class="w-8 h-8 border-2 border-neo-black rounded-lg bg-white hover:bg-[#ff6b6b] hover:text-white cursor-pointer flex items-center justify-center"
           >
             <span class="material-symbols-outlined text-sm">close</span>
           </button>
@@ -552,12 +597,12 @@ const executeResetData = async () => {
             Perhatian: Tindakan ini akan <u>menghapus permanen seluruh data hasil submisi siswa / peserta</u> dari database Firestore!
           </p>
 
-          <div class="p-3 bg-neo-yellow border-2 border-neo-black font-mono font-bold text-xs">
+          <div class="p-3 bg-neo-yellow border-2 border-neo-black rounded-xl font-mono font-bold text-xs">
             Saat ini terdapat <span class="text-base text-red-600 underline">{{ totalPeserta }} data submisi</span> yang akan dibersihkan.
           </div>
 
           <!-- Quick Backup Option -->
-          <div class="p-3 bg-neo-bg border-2 border-neo-black space-y-2">
+          <div class="p-3 bg-neo-bg border-2 border-neo-black rounded-xl space-y-2">
             <p class="font-bold text-[11px] uppercase tracking-wider flex items-center gap-1">
               <span class="material-symbols-outlined text-sm">lightbulb</span>
               <span>Rekomendasi: Unduh Cadangan Data Dulu</span>
@@ -565,7 +610,7 @@ const executeResetData = async () => {
             <button
               type="button"
               @click="exportToExcel"
-              class="w-full py-2 px-3 bg-neo-green border-2 border-neo-black text-xs font-bold uppercase shadow-neo hover:bg-green-400 cursor-pointer flex items-center justify-center gap-1.5"
+              class="w-full py-2 px-3 bg-neo-green border-2 border-neo-black rounded-lg text-xs font-bold uppercase shadow-neo hover:bg-green-400 cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span class="material-symbols-outlined text-sm">download</span>
               <span>Download Cadangan Excel (.xlsx)</span>
@@ -575,13 +620,13 @@ const executeResetData = async () => {
           <!-- Safety Confirmation Input -->
           <div class="space-y-1.5 pt-1">
             <label class="block font-bold text-xs uppercase tracking-wider text-red-600">
-              Ketik kata <span class="bg-neo-black text-neo-bg px-1.5 py-0.5 font-mono">RESET</span> untuk mengonfirmasi:
+              Ketik kata <span class="bg-neo-black text-neo-bg px-1.5 py-0.5 rounded font-mono">RESET</span> untuk mengonfirmasi:
             </label>
             <input
               v-model="confirmResetInput"
               type="text"
               placeholder="Ketik: RESET"
-              class="w-full px-3 py-2 bg-neo-bg border-3 border-neo-black font-mono font-bold text-sm tracking-widest uppercase focus:bg-white focus:outline-none"
+              class="w-full px-3 py-2 bg-neo-bg border-3 border-neo-black rounded-xl font-mono font-bold text-sm tracking-widest uppercase focus:bg-white focus:outline-none"
             />
           </div>
         </div>
@@ -591,7 +636,7 @@ const executeResetData = async () => {
           <button
             type="button"
             @click="isResetModalOpen = false"
-            class="px-4 py-2 text-xs font-bold uppercase border-2 border-neo-black bg-white shadow-neo cursor-pointer hover:bg-gray-100"
+            class="px-4 py-2 text-xs font-bold uppercase border-2 border-neo-black rounded-xl bg-white shadow-neo cursor-pointer hover:bg-gray-100"
           >
             Batal
           </button>
@@ -599,7 +644,7 @@ const executeResetData = async () => {
             type="button"
             @click="executeResetData"
             :disabled="confirmResetInput.trim().toUpperCase() !== 'RESET' || isResetting"
-            class="px-5 py-2.5 text-xs font-bold uppercase border-3 border-neo-black bg-[#ff6b6b] text-white shadow-neo hover:bg-red-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            class="px-5 py-2.5 text-xs font-bold uppercase border-3 border-neo-black rounded-xl bg-[#ff6b6b] text-white shadow-neo hover:bg-red-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
             <span v-if="isResetting" class="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full"></span>
             <span class="material-symbols-outlined text-sm" v-else>delete_forever</span>
