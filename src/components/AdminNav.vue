@@ -30,60 +30,109 @@ const navLinks = [
 </script>
 
 <template>
-  <div class="bg-white border-3 border-neo-black p-3 sm:p-4 shadow-neo space-y-3">
-    <!-- Top Row: Title, User, Logout -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-neo-black pb-3">
-      <div class="flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto">
-        <span class="bg-neo-yellow border-2 border-neo-black px-2 sm:px-2.5 py-0.5 sm:py-1 font-display text-lg sm:text-xl uppercase tracking-wider shrink-0">
+  <div class="bg-white border-3 border-neo-black shadow-neo overflow-hidden">
+    <!-- 1. Window Control Chrome Header -->
+    <div
+      class="bg-neo-black text-neo-bg px-3 sm:px-4 py-1.5 flex items-center justify-between border-b-3 border-neo-black select-none text-[10px] sm:text-xs font-mono"
+    >
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span
+            class="w-2.5 h-2.5 rounded-full bg-[#ff5f56] border border-black inline-block"
+          ></span>
+          <span
+            class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] border border-black inline-block"
+          ></span>
+          <span
+            class="w-2.5 h-2.5 rounded-full bg-[#27c93f] border border-black inline-block"
+          ></span>
+        </div>
+        <span
+          class="font-bold uppercase tracking-wider text-white/90 truncate ml-1"
+        >
+          ADMIN PANEL // {{ title }}
+        </span>
+      </div>
+
+      <div
+        class="flex items-center gap-1.5 text-neo-yellow font-bold shrink-0 ml-2"
+      >
+        <span class="material-symbols-outlined text-[14px]">shield</span>
+        <span class="truncate max-w-[140px] sm:max-w-none">{{
+          authStore.adminEmail || "Admin"
+        }}</span>
+      </div>
+    </div>
+
+    <!-- 2. Action Toolbar Row: Title & Action Tools -->
+    <div
+      class="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-neo-black/20 bg-neo-bg/50"
+    >
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <span
+          class="bg-neo-yellow border-3 border-neo-black px-3 py-1 font-display text-xl sm:text-2xl uppercase tracking-wider shadow-neo shrink-0"
+        >
           {{ title }}
         </span>
-        <span class="text-[11px] sm:text-xs font-mono font-bold text-neo-black/80 truncate max-w-[180px] sm:max-w-none inline-flex items-center gap-1">
-          <span class="material-symbols-outlined text-[16px]">account_circle</span>
-          <span>{{ authStore.adminEmail || 'Admin' }}</span>
+        <span
+          class="hidden md:inline-block font-mono text-[11px] font-bold uppercase text-neo-black/60 bg-white border border-neo-black px-2 py-0.5"
+        >
+          Workshop Google Sites
         </span>
       </div>
 
       <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+        <!-- Button QR Proyektor Kelas -->
         <button
           @click="isQrModalOpen = true"
-          class="px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold uppercase border-2 border-neo-black bg-neo-yellow text-neo-black shadow-neo hover:bg-white transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 font-display tracking-wider"
+          class="px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black bg-neo-yellow text-neo-black shadow-neo hover:bg-white hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 font-display tracking-wider"
           title="Tampilkan QR Code untuk Proyektor Kelas"
         >
-          <span class="material-symbols-outlined text-[16px]">qr_code_2</span>
+          <span class="material-symbols-outlined text-base">qr_code_2</span>
           <span>QR Proyektor</span>
         </button>
+
+        <!-- Link Lihat Peserta -->
         <router-link
           to="/"
-          class="flex-1 sm:flex-initial text-center px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold uppercase border-2 border-neo-black bg-neo-bg hover:bg-white transition-all shadow-neo whitespace-nowrap inline-flex items-center justify-center gap-1"
+          class="flex-1 sm:flex-initial text-center px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-blue transition-all shadow-neo hover:-translate-y-0.5 active:translate-y-0.5 whitespace-nowrap inline-flex items-center justify-center gap-1"
         >
-          <span>Lihat Peserta</span>
-          <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          <span class="material-symbols-outlined text-sm">visibility</span>
+          <span>Halaman Peserta</span>
         </router-link>
+
+        <!-- Button Logout -->
         <button
           @click="handleLogout"
-          class="px-3 py-1.5 text-[11px] sm:text-xs font-bold uppercase border-2 border-neo-black bg-[#ff6b6b] text-white shadow-neo hover:bg-red-600 transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1"
+          class="px-3 py-1.5 text-xs font-bold uppercase border-2 border-neo-black bg-[#ff6b6b] text-white shadow-neo hover:bg-red-600 hover:-translate-y-0.5 active:translate-y-0.5 transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1 font-bold"
         >
-          <span class="material-symbols-outlined text-[15px]">logout</span>
+          <span class="material-symbols-outlined text-sm">logout</span>
           <span>Keluar</span>
         </button>
       </div>
     </div>
 
-    <!-- Bottom Row: Navigation Links -->
-    <nav class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 scroll-smooth">
+    <!-- 3. Navigation Tabs Row -->
+    <nav
+      class="p-2 sm:px-4 sm:py-2.5 flex items-center gap-2 overflow-x-auto scroll-smooth bg-white"
+    >
       <router-link
         v-for="link in navLinks"
         :key="link.path"
         :to="link.path"
         :class="[
-          'px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-bold uppercase border-2 border-neo-black transition-all shrink-0 whitespace-nowrap inline-flex items-center gap-1.5',
+          'px-3 sm:px-4 py-2 text-xs font-bold uppercase transition-all shrink-0 whitespace-nowrap inline-flex items-center gap-2',
           route.path === link.path
-            ? 'bg-neo-pink text-neo-black shadow-neo font-black'
-            : 'bg-white hover:bg-neo-yellow'
+            ? 'bg-neo-pink text-neo-black border-3 border-neo-black shadow-neo font-black -translate-y-0.5'
+            : 'bg-neo-bg text-neo-black border-2 border-neo-black hover:bg-neo-yellow hover:shadow-neo hover:-translate-y-0.5'
         ]"
       >
-        <span class="material-symbols-outlined text-[16px]">{{ link.icon }}</span>
-        <span>{{ link.label }}</span>
+        <span class="material-symbols-outlined text-base">{{ link.icon }}</span>
+        <span class="tracking-wider">{{ link.label }}</span>
+        <span
+          v-if="route.path === link.path"
+          class="w-1.5 h-1.5 rounded-full bg-neo-black ml-0.5"
+        ></span>
       </router-link>
     </nav>
 
