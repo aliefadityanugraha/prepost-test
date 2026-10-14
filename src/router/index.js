@@ -8,8 +8,6 @@ import AdminSettings from '../views/admin/Settings.vue'
 import AdminQuestions from '../views/admin/Questions.vue'
 import AdminAnalytics from '../views/admin/Analytics.vue'
 import { useAuthStore } from '../stores/authStore'
-import { auth } from '../firebase'
-import { onAuthStateChanged } from 'firebase/auth'
 
 const routes = [
   // Rute Publik (Peserta)
@@ -79,28 +77,12 @@ const router = createRouter({
   },
 })
 
-// Helper untuk memastikan inisialisasi state Firebase Auth selesai pada first load
-let authChecked = false
-const ensureAuthReady = () => {
-  return new Promise((resolve) => {
-    if (authChecked) return resolve()
-    const unsubscribe = onAuthStateChanged(auth, () => {
-      authChecked = true
-      unsubscribe()
-      resolve()
-    })
-    // Timeout fallback agar tidak blocking jika Firebase credentials offline/demo
-    setTimeout(() => {
-      authChecked = true
-      resolve()
-    }, 1500)
-  })
-}
-
 // Navigation Guards untuk memproteksi rute /admin/*
 router.beforeEach(async (to, from, next) => {
-  await ensureAuthReady()
+  // Pastikan inisialisasi state Firebase Auth selesai pada first load / refresh
   const authStore = useAuthStore()
+  await authStore.initAuth()
+
   const isUserAuthenticated = authStore.isAuthenticated
 
   // Cek apakah rute membutuhkan autentikasi
@@ -109,7 +91,7 @@ router.beforeEach(async (to, from, next) => {
 
   if (requiresAuth) {
     if (!isUserAuthenticated) {
-      // Jika belum login, lempar ke /admin/login
+      // Jika belum login, lempar ke /admin/login disertai parameter redirect
       next({
         path: '/admin/login',
         query: { redirect: to.fullPath },
@@ -118,8 +100,9 @@ router.beforeEach(async (to, from, next) => {
       next()
     }
   } else if (to.path === '/admin/login' && isUserAuthenticated) {
-    // Jika sudah login dan membuka /admin/login, alihkan ke dashboard
-    next('/admin/dashboard')
+    // Jika sudah login dan membuka /admin/login, alihkan ke redirect target atau dashboard
+    const redirectUrl = to.query.redirect || '/admin/dashboard'
+    next(redirectUrl)
   } else {
     next()
   }

@@ -1,8 +1,8 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import AdminNav from '../../components/AdminNav.vue'
 import { db } from '../../firebase'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, onSnapshot } from 'firebase/firestore'
 import {
   Chart as ChartJS,
   Title,
@@ -16,6 +16,8 @@ import { Bar } from 'vue-chartjs'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { allBankSoal, dataSoalPreTest, dataSoalPostTest } from '../../utils/seeder'
+import { getSortedOpsi } from '../../utils/scoring'
+import { exportLaporanExcelLengkap } from '../../utils/excelExporter'
 
 // Register Chart.js Components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
@@ -25,24 +27,52 @@ const bankSoalList = ref([...allBankSoal])
 const isLoading = ref(true)
 const isGeneratingPdf = ref(false)
 const pdfNotification = ref(null)
+let unsubscribeEvaluasi = null
 
 onMounted(async () => {
-  await Promise.all([fetchEvaluasi(), fetchBankSoal()])
+  await fetchBankSoal()
+  initRealtimeEvaluasi()
 })
+
+onUnmounted(() => {
+  if (unsubscribeEvaluasi) {
+    unsubscribeEvaluasi()
+  }
+})
+
+// Realtime sync ke collection 'evaluasi_peserta'
+const initRealtimeEvaluasi = () => {
+  isLoading.value = true
+  try {
+    const colRef = collection(db, 'evaluasi_peserta')
+    unsubscribeEvaluasi = onSnapshot(
+      colRef,
+      (snapshot) => {
+        const items = []
+        snapshot.forEach((d) => items.push({ id: d.id, ...d.data() }))
+        listEvaluasi.value = items
+        isLoading.value = false
+      },
+      (error) => {
+        console.warn('Realtime listener evaluasi error:', error)
+        isLoading.value = false
+      }
+    )
+  } catch (err) {
+    console.warn('Gagal pasang realtime listener:', err)
+    fetchEvaluasi()
+  }
+}
 
 const fetchEvaluasi = async () => {
   isLoading.value = true
   try {
-    const snapPromise = getDocs(collection(db, 'evaluasi_peserta'))
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Firestore timeout')), 3000)
-    )
-    const snap = await Promise.race([snapPromise, timeoutPromise])
+    const snap = await getDocs(collection(db, 'evaluasi_peserta'))
     const items = []
     snap.forEach((d) => items.push({ id: d.id, ...d.data() }))
     listEvaluasi.value = items
   } catch (err) {
-    console.warn('Gagal fetch data evaluasi Firestore, inisialisasi default:', err)
+    console.warn('Gagal fetch data evaluasi Firestore:', err)
   } finally {
     isLoading.value = false
   }
@@ -73,7 +103,7 @@ const postTestItems = computed(() =>
   listEvaluasi.value.filter((i) => i.jenis_tes === 'Post-Test')
 )
 
-// Hitung statistik rata-rata (jika data kosong, gunakan nilai referensi evaluasi realistis)
+// Hitung statistik rata-rata MURNI (0 jika belum ada data)
 const hitungRata = (items, key) => {
   if (!items || items.length === 0) return 0
   const sum = items.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0)
@@ -81,36 +111,31 @@ const hitungRata = (items, key) => {
 }
 
 const rataTotalPre = computed(() => {
-  const val = hitungRata(preTestItems.value, 'skor_total')
-  return val > 0 ? val : (preTestItems.value.length === 0 ? 54.5 : 0)
+  return hitungRata(preTestItems.value, 'skor_total')
 })
 
 const rataTotalPost = computed(() => {
-  const val = hitungRata(postTestItems.value, 'skor_total')
-  return val > 0 ? val : (postTestItems.value.length === 0 ? 86.0 : 0)
+  return hitungRata(postTestItems.value, 'skor_total')
 })
 
 const rataPGPre = computed(() => {
-  const val = hitungRata(preTestItems.value, 'skor_pg')
-  return val > 0 ? val : (preTestItems.value.length === 0 ? 37.0 : 0)
+  return hitungRata(preTestItems.value, 'skor_pg')
 })
 
 const rataPGPost = computed(() => {
-  const val = hitungRata(postTestItems.value, 'skor_pg')
-  return val > 0 ? val : (postTestItems.value.length === 0 ? 60.5 : 0)
+  return hitungRata(postTestItems.value, 'skor_pg')
 })
 
 const rataPraktikPre = computed(() => {
-  const val = hitungRata(preTestItems.value, 'skor_praktik')
-  return val > 0 ? val : (preTestItems.value.length === 0 ? 17.5 : 0)
+  return hitungRata(preTestItems.value, 'skor_praktik')
 })
 
 const rataPraktikPost = computed(() => {
-  const val = hitungRata(postTestItems.value, 'skor_praktik')
-  return val > 0 ? val : (postTestItems.value.length === 0 ? 25.5 : 0)
+  return hitungRata(postTestItems.value, 'skor_praktik')
 })
 
 const peningkatan = computed(() => {
+  if (preTestItems.value.length === 0 || postTestItems.value.length === 0) return 0
   const delta = rataTotalPost.value - rataTotalPre.value
   return Math.round(delta * 10) / 10
 })
@@ -227,12 +252,12 @@ const toggleExpandQuestion = (id) => {
   expandedQuestionId.value = expandedQuestionId.value === id ? null : id
 }
 
-// Analisis Butir Soal per Sesi Aktif (Pre-Test atau Post-Test)
-const itemAnalysisData = computed(() => {
-  const isPre = activeItemTab.value === 'Pre-Test'
+// Fungsi Murni Analisis Butir Soal per Sesi (Pre-Test atau Post-Test)
+const calcItemAnalysis = (jenisTes) => {
+  const isPre = jenisTes === 'Pre-Test'
   const submissions = isPre ? preTestItems.value : postTestItems.value
   const targetSoal = bankSoalList.value
-    .filter((s) => s.jenis_tes === activeItemTab.value)
+    .filter((s) => s.jenis_tes === jenisTes)
     .sort((a, b) => (Number(a.nomor) || 0) - (Number(b.nomor) || 0))
 
   return targetSoal.map((soal) => {
@@ -273,18 +298,16 @@ const itemAnalysisData = computed(() => {
         rataPoin = Math.round(((bisaCount * 6) / totalPeserta) * 10) / 10
       }
     } else {
-      // Nilai rujukan evaluasi benchmark jika belum ada peserta tes
-      const baselinePre = [35, 42, 48, 40, 32, 38, 45, 25, 20, 30, 22, 18]
-      const baselinePost = [85, 92, 88, 82, 86, 94, 84, 88, 90, 85, 92, 86]
-      const idx = (Number(soal.nomor) - 1) % 12
-      percentage = isPre ? (baselinePre[idx] || 35) : (baselinePost[idx] || 85)
-      const maxPoin = soal.kategori === 'Pilihan Ganda' ? 10 : 6
-      rataPoin = Math.round(((percentage / 100) * maxPoin) * 10) / 10
+      percentage = 0
+      rataPoin = 0
     }
 
     let statusLabel = ''
     let statusBadgeColor = ''
-    if (percentage >= 80) {
+    if (totalPeserta === 0) {
+      statusLabel = 'Belum Ada Data'
+      statusBadgeColor = 'bg-gray-200 text-neo-black/60'
+    } else if (percentage >= 80) {
       statusLabel = 'Tinggi (Sangat Dikuasai)'
       statusBadgeColor = 'bg-neo-green text-neo-black'
     } else if (percentage >= 60) {
@@ -297,7 +320,7 @@ const itemAnalysisData = computed(() => {
 
     return {
       ...soal,
-      id: soal.id || `${activeItemTab.value}_${soal.nomor}`,
+      id: soal.id || `${jenisTes}_${soal.nomor}`,
       totalPeserta,
       correctCount,
       bisaCount,
@@ -311,6 +334,11 @@ const itemAnalysisData = computed(() => {
       isSampleData: totalPeserta === 0,
     }
   })
+}
+
+// Analisis Butir Soal per Sesi Aktif (Pre-Test atau Post-Test)
+const itemAnalysisData = computed(() => {
+  return calcItemAnalysis(activeItemTab.value)
 })
 
 const filteredItemAnalysis = computed(() => {
@@ -344,39 +372,32 @@ const komparasiButirList = computed(() => {
   const totalPre = preTestItems.value.length
   const totalPost = postTestItems.value.length
 
-  const baselinePre = [35, 42, 48, 40, 32, 38, 45, 25, 20, 30, 22, 18]
-  const baselinePost = [85, 92, 88, 82, 86, 94, 84, 88, 90, 85, 92, 86]
-
   return preList.map((preSoal, idx) => {
     const postSoal = postList[idx] || preSoal
 
     let preRate = 0
     if (totalPre > 0) {
       if (preSoal.kategori === 'Pilihan Ganda') {
-        const correct = preTestItems.value.filter((s) => s.jawaban?.[preSoal.nomor] === preSoal.kunci_jawaban).length
+        const correct = preTestItems.value.filter((s) => (s.jawaban?.[preSoal.nomor] || s.jawaban?.[String(preSoal.nomor)]) === preSoal.kunci_jawaban).length
         preRate = Math.round((correct / totalPre) * 100)
       } else {
-        const bisa = preTestItems.value.filter((s) => s.jawaban?.[preSoal.nomor] === 'Bisa').length
+        const bisa = preTestItems.value.filter((s) => (s.jawaban?.[preSoal.nomor] || s.jawaban?.[String(preSoal.nomor)]) === 'Bisa').length
         preRate = Math.round((bisa / totalPre) * 100)
       }
-    } else {
-      preRate = baselinePre[idx] || 35
     }
 
     let postRate = 0
     if (totalPost > 0) {
       if (postSoal.kategori === 'Pilihan Ganda') {
-        const correct = postTestItems.value.filter((s) => s.jawaban?.[postSoal.nomor] === postSoal.kunci_jawaban).length
+        const correct = postTestItems.value.filter((s) => (s.jawaban?.[postSoal.nomor] || s.jawaban?.[String(postSoal.nomor)]) === postSoal.kunci_jawaban).length
         postRate = Math.round((correct / totalPost) * 100)
       } else {
-        const bisa = postTestItems.value.filter((s) => s.jawaban?.[postSoal.nomor] === 'Bisa').length
+        const bisa = postTestItems.value.filter((s) => (s.jawaban?.[postSoal.nomor] || s.jawaban?.[String(postSoal.nomor)]) === 'Bisa').length
         postRate = Math.round((bisa / totalPost) * 100)
       }
-    } else {
-      postRate = baselinePost[idx] || 85
     }
 
-    const deltaGain = postRate - preRate
+    const deltaGain = (totalPre > 0 && totalPost > 0) ? (postRate - preRate) : 0
 
     return {
       nomor: preSoal.nomor,
@@ -434,7 +455,7 @@ const downloadPDF = async () => {
 
     pdfNotification.value = {
       type: 'success',
-      message: `Laporan Analisis Lengkap berhasil diunduh: "${fileName}"!`,
+      message: `Laporan Analisis Lengkap (PDF) berhasil diunduh: "${fileName}"!`,
     }
   } catch (err) {
     console.error('Gagal generate PDF:', err)
@@ -446,38 +467,99 @@ const downloadPDF = async () => {
     isGeneratingPdf.value = false
   }
 }
+
+// Download Laporan Excel Lengkap (.xlsx) dengan Sheet Terpisah Pre & Post Test dan Rincian Soal 1-12
+const downloadExcel = () => {
+  try {
+    const fileName = exportLaporanExcelLengkap({
+      listEvaluasi: listEvaluasi.value,
+      bankSoalList: bankSoalList.value,
+    })
+
+    pdfNotification.value = {
+      type: 'success',
+      message: `Laporan Lengkap Excel (.xlsx) dengan Sheet Pre & Post Test terpisah dan rincian soal 1-12 berhasil diunduh: "${fileName}"!`,
+    }
+  } catch (err) {
+    console.error('Gagal export Excel:', err)
+    pdfNotification.value = {
+      type: 'error',
+      message: 'Gagal mengekspor file Excel: ' + err.message,
+    }
+  }
+}
 </script>
 
 <template>
   <div class="space-y-8">
-    <AdminNav title="ANALITIK & LAPORAN PDF" />
+    <AdminNav title="ANALITIK & LAPORAN" />
 
     <!-- Action Header Card -->
-    <header class="bg-neo-yellow border-3 border-neo-black p-6 sm:p-8 shadow-neo flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <header class="bg-neo-yellow border-3 border-neo-black p-4 sm:p-8 shadow-neo flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
       <div class="space-y-2">
-        <div class="inline-block bg-neo-pink text-neo-black px-3 py-1 font-mono text-xs font-bold uppercase border-2 border-neo-black shadow-neo">
+        <div class="inline-block bg-neo-pink text-neo-black px-2.5 sm:px-3 py-1 font-mono text-[10px] sm:text-xs font-bold uppercase border-2 border-neo-black shadow-neo">
           Workshop Pembuatan Website Portfolio dengan Google Sites
         </div>
-        <h1 class="font-display text-4xl sm:text-6xl uppercase tracking-wider text-neo-black leading-none">
-          Pre & Post Test • Analisis Hasil
+        <h1 class="font-display text-3xl sm:text-5xl md:text-6xl uppercase tracking-wider text-neo-black leading-none">
+          Pre & Post Test • Analisis & Laporan
         </h1>
-        <p class="text-sm font-medium text-neo-black/80 max-w-xl">
-          Visualisasi perbandingan capaian kompetensi pembuatan website portfolio Google Sites antara Pre-Test dan Post-Test.
+        <p class="text-xs sm:text-sm font-medium text-neo-black/80 max-w-xl">
+          Visualisasi perbandingan capaian kompetensi pembuatan website portfolio Google Sites serta ekspor laporan resmi dalam format PDF dan Excel (.xlsx).
         </p>
       </div>
 
-      <!-- Tombol Download Laporan PDF Bergaya Neo Brutalism -->
-      <div class="shrink-0">
+      <!-- Tombol Download Laporan PDF & Excel Bergaya Neo Brutalism -->
+      <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 shrink-0 w-full md:w-auto">
+        <!-- Refresh Data -->
+        <button
+          @click="fetchEvaluasi"
+          :disabled="isLoading"
+          class="neo-button bg-white py-3 sm:py-3.5 px-3.5 sm:px-4 text-neo-black font-display text-base sm:text-lg uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 shadow-neo hover:shadow-neo-hover w-full sm:w-auto font-bold"
+          title="Refresh Data Submisi"
+        >
+          <span class="material-symbols-outlined text-[16px]" :class="{ 'animate-spin': isLoading }">refresh</span>
+          <span>Refresh</span>
+        </button>
+
+        <!-- Download PDF -->
         <button
           @click="downloadPDF"
           :disabled="isGeneratingPdf"
-          class="neo-button bg-neo-pink py-4 px-6 text-neo-black font-display text-2xl uppercase tracking-wider cursor-pointer flex items-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed shadow-neo hover:shadow-neo-hover"
+          class="neo-button bg-neo-pink py-3 sm:py-3.5 px-4 sm:px-5 text-neo-black font-display text-base sm:text-lg uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-neo hover:shadow-neo-hover w-full sm:w-auto font-bold"
         >
-          <span v-if="isGeneratingPdf" class="animate-spin inline-block w-5 h-5 border-3 border-neo-black border-t-transparent rounded-full"></span>
-          <span>📄 {{ isGeneratingPdf ? 'Membuat PDF...' : 'Download Laporan PDF' }}</span>
+          <span v-if="isGeneratingPdf" class="animate-spin inline-block w-4 h-4 border-2 border-neo-black border-t-transparent rounded-full"></span>
+          <span v-else class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+          <span>{{ isGeneratingPdf ? 'Membuat PDF...' : 'Export PDF' }}</span>
+        </button>
+
+        <!-- Download Excel -->
+        <button
+          @click="downloadExcel"
+          class="neo-button bg-neo-green py-3 sm:py-3.5 px-4 sm:px-5 text-neo-black font-display text-base sm:text-lg uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2 shadow-neo hover:shadow-neo-hover w-full sm:w-auto font-bold"
+        >
+          <span class="material-symbols-outlined text-[16px]">table_chart</span>
+          <span>Export Excel (.xlsx)</span>
         </button>
       </div>
     </header>
+
+    <!-- Empty State Alert Jika Database Kosong -->
+    <div
+      v-if="listEvaluasi.length === 0 && !isLoading"
+      class="p-4 sm:p-5 bg-white border-3 border-neo-black shadow-neo flex items-start sm:items-center gap-3.5"
+    >
+      <div class="text-3xl sm:text-4xl text-neo-black flex items-center justify-center">
+        <span class="material-symbols-outlined text-4xl">inbox</span>
+      </div>
+      <div class="space-y-1">
+        <h4 class="font-display text-base sm:text-lg uppercase tracking-wider text-neo-black">
+          Database Submisi Peserta Kosong
+        </h4>
+        <p class="text-xs sm:text-sm font-medium text-neo-black/75 leading-relaxed">
+          Seluruh data uji coba peserta telah dibersihkan. Grafik komparasi dan indikator penilaian saat ini bernilai 0 dan akan otomatis terisi secara realtime begitu peserta mulai mengumpulkan lembar jawaban Pre-Test atau Post-Test.
+        </p>
+      </div>
+    </div>
 
     <!-- Notification Alert -->
     <div
@@ -487,19 +569,24 @@ const downloadPDF = async () => {
         pdfNotification.type === 'success' ? 'bg-neo-green text-neo-black' : 'bg-[#ff6b6b] text-white'
       ]"
     >
-      <span>{{ pdfNotification.message }}</span>
-      <button @click="pdfNotification = null" class="font-mono text-base font-bold cursor-pointer">✕</button>
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-base">{{ pdfNotification.type === 'success' ? 'check_circle' : 'warning' }}</span>
+        <span>{{ pdfNotification.message }}</span>
+      </div>
+      <button @click="pdfNotification = null" class="cursor-pointer flex items-center">
+        <span class="material-symbols-outlined text-base">close</span>
+      </button>
     </div>
 
     <!-- AREA DOKUMEN LAPORAN YANG DITANGKAP OLEH html2canvas DAN jsPDF -->
     <div id="report-printable-area" class="space-y-8 bg-neo-bg p-4 sm:p-6 border-3 border-neo-black shadow-neo">
       <!-- Kop Dokumen Laporan -->
-      <div class="bg-white border-3 border-neo-black p-6 shadow-neo flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <span class="text-xs font-mono font-bold uppercase bg-neo-yellow px-2 py-0.5 border border-neo-black">
             LAPORAN HASIL PRE & POST TEST
           </span>
-          <h2 class="font-display text-3xl uppercase tracking-wider mt-1 text-neo-black">
+          <h2 class="font-display text-2xl sm:text-3xl uppercase tracking-wider mt-1 text-neo-black">
             Workshop Pembuatan Website Portfolio dengan Google Sites
           </h2>
           <p class="text-xs font-mono font-bold text-neo-black/70">
@@ -507,7 +594,7 @@ const downloadPDF = async () => {
           </p>
         </div>
 
-        <div class="flex items-center gap-2 border-2 border-neo-black bg-neo-bg p-3">
+        <div class="flex items-center gap-2 border-2 border-neo-black bg-neo-bg p-2.5 sm:p-3 shrink-0">
           <div class="w-8 h-8 bg-neo-yellow border-2 border-neo-black flex items-center justify-center font-display text-lg">
             GS
           </div>
@@ -519,66 +606,66 @@ const downloadPDF = async () => {
       </div>
 
       <!-- Metrik Ringkas Perbandingan -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         <!-- Rata-rata Pre-Test -->
-        <div class="bg-white border-3 border-neo-black p-5 shadow-neo">
+        <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-bold uppercase text-neo-black/60">Mean Pre-Test</span>
+            <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60">Mean Pre-Test</span>
             <span class="w-2.5 h-2.5 bg-neo-pink border border-neo-black"></span>
           </div>
-          <div class="font-display text-4xl sm:text-5xl text-neo-black mt-1 leading-none">
+          <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             {{ rataTotalPre }}
           </div>
-          <span class="text-[11px] font-bold text-neo-black/70 mt-2 block">
+          <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/70 mt-1.5 sm:mt-2 block truncate">
             Submisi: {{ preTestItems.length }} Peserta
           </span>
         </div>
 
         <!-- Rata-rata Post-Test -->
-        <div class="bg-white border-3 border-neo-black p-5 shadow-neo">
+        <div class="bg-white border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-bold uppercase text-neo-black/60">Mean Post-Test</span>
+            <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/60">Mean Post-Test</span>
             <span class="w-2.5 h-2.5 bg-neo-blue border border-neo-black"></span>
           </div>
-          <div class="font-display text-4xl sm:text-5xl text-neo-black mt-1 leading-none">
+          <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             {{ rataTotalPost }}
           </div>
-          <span class="text-[11px] font-bold text-neo-black/70 mt-2 block">
+          <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/70 mt-1.5 sm:mt-2 block truncate">
             Submisi: {{ postTestItems.length }} Peserta
           </span>
         </div>
 
         <!-- Peningkatan Rata-rata -->
-        <div class="bg-neo-green border-3 border-neo-black p-5 shadow-neo">
+        <div class="bg-neo-green border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-bold uppercase text-neo-black/80">Peningkatan Rata-Rata</span>
-            <span class="text-sm font-bold">▲</span>
+            <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/80">Peningkatan</span>
+            <span class="material-symbols-outlined text-sm font-bold">trending_up</span>
           </div>
-          <div class="font-display text-4xl sm:text-5xl text-neo-black mt-1 leading-none">
+          <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             +{{ peningkatan }}
           </div>
-          <span class="text-[11px] font-bold text-neo-black/80 mt-2 block">
+          <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/80 mt-1.5 sm:mt-2 block truncate">
             Gain Skor Pembelajaran
           </span>
         </div>
 
         <!-- Total Submisi -->
-        <div class="bg-neo-yellow border-3 border-neo-black p-5 shadow-neo">
+        <div class="bg-neo-yellow border-3 border-neo-black p-3.5 sm:p-5 shadow-neo">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-bold uppercase text-neo-black/80">Total Evaluasi</span>
+            <span class="text-[10px] sm:text-xs font-mono font-bold uppercase text-neo-black/80">Total Evaluasi</span>
             <span class="w-2.5 h-2.5 bg-neo-black border border-neo-black"></span>
           </div>
-          <div class="font-display text-4xl sm:text-5xl text-neo-black mt-1 leading-none">
+          <div class="font-display text-3xl sm:text-4xl md:text-5xl text-neo-black mt-1 leading-none">
             {{ listEvaluasi.length }}
           </div>
-          <span class="text-[11px] font-bold text-neo-black/80 mt-2 block">
-            Dokumen Terekam
+          <span class="text-[10px] sm:text-[11px] font-bold text-neo-black/80 mt-1.5 sm:mt-2 block truncate">
+            Submisi Terekam
           </span>
         </div>
       </div>
 
       <!-- BAR CHART CONTAINER DENGAN BORDER TEBAL BRUTALISM -->
-      <section class="bg-white border-3 border-neo-black p-6 sm:p-8 shadow-neo space-y-4">
+      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 md:p-8 shadow-neo space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2 border-b-2 border-neo-black pb-3">
           <div class="flex items-center gap-2">
             <span class="w-3.5 h-3.5 bg-neo-pink border-2 border-neo-black"></span>
@@ -593,22 +680,22 @@ const downloadPDF = async () => {
         </div>
 
         <!-- Canvas Chart Box dengan Border Tebal Hitam Khas Neo Brutalism -->
-        <div class="border-3 border-neo-black bg-neo-bg p-4 sm:p-6 shadow-neo min-h-[360px] h-[380px]">
+        <div class="border-3 border-neo-black bg-neo-bg p-2.5 sm:p-6 shadow-neo min-h-[280px] h-[300px] sm:min-h-[360px] sm:h-[380px]">
           <Bar :data="chartData" :options="chartOptions" />
         </div>
       </section>
 
       <!-- TABEL RINGKASAN DATA KOMPARATIF -->
-      <section class="bg-white border-3 border-neo-black p-6 shadow-neo space-y-4">
+      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 shadow-neo space-y-4">
         <div class="flex items-center gap-2">
           <span class="w-3.5 h-3.5 bg-neo-yellow border-2 border-neo-black"></span>
-          <h3 class="font-display text-2xl uppercase tracking-wider">
+          <h3 class="font-display text-xl sm:text-2xl uppercase tracking-wider">
             Tabel Ringkasan Analitik
           </h3>
         </div>
 
         <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-left text-sm">
+          <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[560px]">
             <thead>
               <tr class="bg-neo-black text-neo-bg border-b-3 border-neo-black">
                 <th class="p-3 border-r-2 border-white/20 font-display text-base uppercase">Indikator Penilaian</th>
@@ -644,7 +731,7 @@ const downloadPDF = async () => {
       <!-- ======================================================== -->
       <!-- SEKSI ANALISIS RATA-RATA JAWABAN PERSOAL (ITEM ANALYSIS) -->
       <!-- ======================================================== -->
-      <section class="bg-white border-3 border-neo-black p-6 sm:p-8 shadow-neo space-y-6">
+      <section class="bg-white border-3 border-neo-black p-4 sm:p-6 md:p-8 shadow-neo space-y-4 sm:space-y-6">
         <!-- Header & Nav Tabs -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-3 border-neo-black pb-4">
           <div class="space-y-1">
@@ -654,7 +741,7 @@ const downloadPDF = async () => {
                 ITEM ANALYSIS • EVALUASI SOAL
               </span>
             </div>
-            <h3 class="font-display text-3xl sm:text-4xl uppercase tracking-wider text-neo-black">
+            <h3 class="font-display text-2xl sm:text-3xl md:text-4xl uppercase tracking-wider text-neo-black">
               Analisis Rata-Rata Jawaban Per Butir Soal
             </h3>
             <p class="text-xs sm:text-sm font-medium text-neo-black/80">
@@ -663,36 +750,39 @@ const downloadPDF = async () => {
           </div>
 
           <!-- Tab Pemilih Sesi & Komparasi -->
-          <div class="flex items-center gap-1.5 border-3 border-neo-black bg-neo-bg p-1.5 flex-wrap self-start md:self-auto">
+          <div class="flex items-center gap-1.5 border-3 border-neo-black bg-neo-bg p-1.5 flex-wrap self-start md:self-auto w-full md:w-auto">
             <button
               type="button"
               @click="activeItemTab = 'Pre-Test'"
               :class="[
-                'px-3.5 py-1.5 font-display text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent',
+                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1',
                 activeItemTab === 'Pre-Test' ? 'bg-neo-pink text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
               ]"
             >
-              🌸 Pre-Test
+              <span class="material-symbols-outlined text-[16px]">assignment</span>
+              <span>Pre-Test</span>
             </button>
             <button
               type="button"
               @click="activeItemTab = 'Post-Test'"
               :class="[
-                'px-3.5 py-1.5 font-display text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent',
+                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1',
                 activeItemTab === 'Post-Test' ? 'bg-neo-blue text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
               ]"
             >
-              🌊 Post-Test
+              <span class="material-symbols-outlined text-[16px]">rocket_launch</span>
+              <span>Post-Test</span>
             </button>
             <button
               type="button"
               @click="activeItemTab = 'Komparasi'"
               :class="[
-                'px-3.5 py-1.5 font-display text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent',
+                'flex-1 sm:flex-initial text-center px-2.5 sm:px-3.5 py-1 sm:py-1.5 font-display text-xs sm:text-base uppercase tracking-wider transition-all cursor-pointer border-2 border-transparent inline-flex items-center justify-center gap-1',
                 activeItemTab === 'Komparasi' ? 'bg-neo-yellow text-neo-black font-bold border-neo-black shadow-neo' : 'hover:bg-white text-neo-black/70'
               ]"
             >
-              ⚡ Gain Pre vs Post
+              <span class="material-symbols-outlined text-[16px]">compare_arrows</span>
+              <span>Gain Pre vs Post</span>
             </button>
           </div>
         </div>
@@ -718,11 +808,11 @@ const downloadPDF = async () => {
           <!-- Status Sumber Data -->
           <div class="text-xs font-mono font-bold">
             <span v-if="itemAnalysisData[0]?.isSampleData" class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-yellow border-2 border-neo-black">
-              <span>⚠️</span>
+              <span class="material-symbols-outlined text-[15px]">info</span>
               <span>Data Rujukan Standar (0 Submisi Riil)</span>
             </span>
             <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-neo-green border-2 border-neo-black">
-              <span>✓</span>
+              <span class="material-symbols-outlined text-[15px]">check_circle</span>
               <span>Berdasarkan {{ itemAnalysisData[0]?.totalPeserta }} Peserta Riil</span>
             </span>
           </div>
@@ -762,7 +852,7 @@ const downloadPDF = async () => {
           <div
             v-for="soal in filteredItemAnalysis"
             :key="soal.id"
-            class="border-3 border-neo-black bg-neo-bg p-5 shadow-neo space-y-4 transition-all"
+            class="border-3 border-neo-black bg-neo-bg p-3.5 sm:p-5 shadow-neo space-y-3 sm:space-y-4 transition-all"
           >
             <!-- Bar Atas Kartu Soal -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-neo-black pb-3">
@@ -791,9 +881,10 @@ const downloadPDF = async () => {
                 <button
                   type="button"
                   @click="toggleExpandQuestion(soal.id)"
-                  class="px-2.5 py-1 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-yellow transition-all shadow-neo cursor-pointer"
+                  class="px-2.5 py-1 text-xs font-bold uppercase border-2 border-neo-black bg-white hover:bg-neo-yellow transition-all shadow-neo cursor-pointer inline-flex items-center gap-1"
                 >
-                  {{ expandedQuestionId === soal.id ? 'Tutup Opsi ▲' : 'Rincian Opsi ▼' }}
+                  <span>{{ expandedQuestionId === soal.id ? 'Tutup Opsi' : 'Rincian Opsi' }}</span>
+                  <span class="material-symbols-outlined text-[15px]">{{ expandedQuestionId === soal.id ? 'expand_less' : 'expand_more' }}</span>
                 </button>
               </div>
             </div>
@@ -833,23 +924,27 @@ const downloadPDF = async () => {
               <!-- Opsi Pilihan Ganda -->
               <div v-if="soal.kategori === 'Pilihan Ganda'" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div
-                  v-for="(teksOpsi, huruf) in soal.opsi"
-                  :key="huruf"
+                  v-for="item in getSortedOpsi(soal.opsi)"
+                  :key="item.key"
                   :class="[
                     'p-3 border-2 border-neo-black text-xs space-y-1.5 transition-all',
-                    huruf === soal.kunci_jawaban ? 'bg-neo-green/30 font-bold border-neo-black' : 'bg-white'
+                    item.key === soal.kunci_jawaban ? 'bg-neo-green/30 font-bold border-neo-black' : 'bg-white'
                   ]"
                 >
                   <div class="flex items-center justify-between">
-                    <span class="font-mono font-bold text-sm">
-                      [{{ huruf }}] {{ huruf === soal.kunci_jawaban ? '✓ Kunci Benar' : '' }}
+                    <span class="font-mono font-bold text-sm flex items-center gap-1">
+                      <span>[{{ item.key }}]</span>
+                      <span v-if="item.key === soal.kunci_jawaban" class="inline-flex items-center text-xs text-green-700 gap-0.5">
+                        <span class="material-symbols-outlined text-[13px]">check</span>
+                        <span>Kunci Benar</span>
+                      </span>
                     </span>
                     <span class="font-mono font-bold bg-neo-black text-white px-1.5 py-0.5 text-[11px]">
-                      {{ soal.opsiDistribution[huruf] }} Respon ({{ soal.totalPeserta > 0 ? Math.round((soal.opsiDistribution[huruf] / soal.totalPeserta) * 100) : 0 }}%)
+                      {{ soal.opsiDistribution[item.key] || 0 }} Respon ({{ soal.totalPeserta > 0 ? Math.round(((soal.opsiDistribution[item.key] || 0) / soal.totalPeserta) * 100) : 0 }}%)
                     </span>
                   </div>
                   <p class="text-neo-black/80 font-medium leading-tight">
-                    {{ teksOpsi }}
+                    {{ item.teks }}
                   </p>
                 </div>
               </div>
@@ -858,7 +953,10 @@ const downloadPDF = async () => {
               <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="p-3 border-2 border-neo-black bg-neo-green/30 space-y-1 text-xs">
                   <div class="flex items-center justify-between font-bold font-mono">
-                    <span>👍 Menjawab 'Bisa'</span>
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[15px] text-green-700">thumb_up</span>
+                      <span>Menjawab 'Bisa'</span>
+                    </span>
                     <span class="bg-neo-black text-white px-2 py-0.5">{{ soal.praktikDistribution['Bisa'] }} Respon</span>
                   </div>
                   <p class="font-medium text-neo-black/80">Peserta menguasai indikator portofolio ini.</p>
@@ -866,7 +964,10 @@ const downloadPDF = async () => {
 
                 <div class="p-3 border-2 border-neo-black bg-neo-pink/30 space-y-1 text-xs">
                   <div class="flex items-center justify-between font-bold font-mono">
-                    <span>👎 Menjawab 'Belum Bisa'</span>
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[15px] text-red-700">thumb_down</span>
+                      <span>Menjawab 'Belum Bisa'</span>
+                    </span>
                     <span class="bg-neo-black text-white px-2 py-0.5">{{ soal.praktikDistribution['Belum Bisa'] }} Respon</span>
                   </div>
                   <p class="font-medium text-neo-black/80">Peserta memerlukan pendampingan materi lebih lanjut.</p>
@@ -888,7 +989,7 @@ const downloadPDF = async () => {
           </div>
 
           <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo">
-            <table class="w-full border-collapse text-left text-xs sm:text-sm">
+            <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[700px]">
               <thead>
                 <tr class="bg-neo-black text-neo-bg">
                   <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-12">No</th>
@@ -947,7 +1048,7 @@ const downloadPDF = async () => {
           </div>
 
           <div class="overflow-x-auto border-3 border-neo-black bg-white shadow-neo">
-            <table class="w-full border-collapse text-left text-xs sm:text-sm">
+            <table class="w-full border-collapse text-left text-xs sm:text-sm min-w-[700px]">
               <thead>
                 <tr class="bg-neo-black text-neo-bg">
                   <th class="p-3 border-r-2 border-white/20 font-display text-sm uppercase text-center w-12">No</th>

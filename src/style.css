@@ -26,3 +26,26 @@
     @apply border-3 border-neo-black shadow-neo hover:shadow-neo-hover hover:-translate-x-0.5 hover:-translate-y-0.5 active:shadow-neo-active active:translate-x-1 active:translate-y-1 transition-all duration-150 font-bold;
   }
 }
+
+/* Material Symbols Outlined Customization (Bold & Sharp untuk Neo Brutalism) */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 600,
+    'GRAD' 0,
+    'opsz' 24;
+}
+

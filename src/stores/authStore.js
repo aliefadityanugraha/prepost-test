@@ -8,20 +8,52 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth'
 
+let authInitPromise = null
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const isAuthReady = ref(false)
   const isDemoAdmin = ref(localStorage.getItem('neo_demo_admin') === 'true')
 
-  // Inisialisasi Firebase Auth listener
+  if (isDemoAdmin.value && !user.value) {
+    user.value = {
+      email: 'admin@neobrutal.dev',
+      displayName: 'Administrator Neo Brutal',
+      uid: 'demo_admin_uid',
+    }
+  }
+
+  // Inisialisasi Firebase Auth listener (singleton promise agar konsisten saat refresh)
   const initAuth = () => {
-    return new Promise((resolve) => {
-      onAuthStateChanged(auth, (firebaseUser) => {
-        user.value = firebaseUser
-        isAuthReady.value = true
-        resolve(firebaseUser)
-      })
+    if (authInitPromise) {
+      return authInitPromise
+    }
+
+    authInitPromise = new Promise((resolve) => {
+      onAuthStateChanged(
+        auth,
+        (firebaseUser) => {
+          user.value = firebaseUser
+          isAuthReady.value = true
+          resolve(firebaseUser)
+        },
+        (err) => {
+          console.warn('Firebase Auth state error:', err)
+          isAuthReady.value = true
+          resolve(null)
+        }
+      )
+
+      // Fallback timeout agar tidak blocking selamanya jika network error / offline
+      setTimeout(() => {
+        if (!isAuthReady.value) {
+          isAuthReady.value = true
+          resolve(user.value)
+        }
+      }, 2500)
     })
+
+    return authInitPromise
   }
 
   const isAuthenticated = computed(() => {

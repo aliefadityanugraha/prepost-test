@@ -64,4 +64,27 @@ export function calculateScore(soalList = [], jawaban = {}) {
   }
 }
 
+/**
+ * Mengurutkan opsi pilihan ganda secara pasti (A, B, C, D, ...)
+ * Mencegah urutan acak akibat deserialisasi objek di JavaScript/Firestore.
+ *
+ * @param {Object|Array} opsi - Objek map opsi { A: '...', B: '...' }
+ * @returns {Array<{key: string, teks: string}>} Array opsi terurut A, B, C, D
+ */
+export function getSortedOpsi(opsi) {
+  if (!opsi) return []
+  if (Array.isArray(opsi)) {
+    return opsi.map((teks, idx) => ({ key: String.fromCharCode(65 + idx), teks }))
+  }
+  const standardKeys = ['A', 'B', 'C', 'D', 'E', 'F']
+  return Object.keys(opsi)
+    .sort((a, b) => {
+      const idxA = standardKeys.indexOf(a.toUpperCase())
+      const idxB = standardKeys.indexOf(b.toUpperCase())
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      return a.localeCompare(b)
+    })
+    .map((key) => ({ key, teks: opsi[key] }))
+}
+
 export default calculateScore

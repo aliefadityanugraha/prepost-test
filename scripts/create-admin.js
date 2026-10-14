@@ -2,18 +2,14 @@ import { auth } from '../src/firebase.js'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 
 const args = process.argv.slice(2)
-const email = args[0]
-const password = args[1]
+const email = args[0] || 'admin@workshop.id'
+const password = args[1] || 'admin123'
 
-if (!email || !password) {
-  console.log('----------------------------------------------------')
-  console.log('📌 Cara Penggunaan:')
-  console.log('   npm run create-admin <email> <password>')
-  console.log('')
-  console.log('Contoh:')
-  console.log('   npm run create-admin admin@workshop.id rahasia123')
-  console.log('----------------------------------------------------')
-  process.exit(1)
+if (!args[0] || !args[1]) {
+  console.log('ℹ️ Tidak ada argumen email/password yang diberikan.')
+  console.log(`ℹ️ Menggunakan kredensial admin default: ${email} / ${password}`)
+  console.log('📌 Tips: Anda juga dapat menentukan kredensial sendiri dengan:')
+  console.log('   npm run create-admin <email> <password>\n')
 }
 
 try {
