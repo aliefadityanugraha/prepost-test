@@ -9,13 +9,12 @@ import {
 
 /**
  * =========================================================================
- * BANK SOAL PILIHAN GANDA (dipakai bersama oleh Pre-Test dan Post-Test)
+ * BANK SOAL PILIHAN GANDA PRE-TEST
  * Soal bersifat konseptual-kritis (mengapa / apa bedanya / apa akibatnya),
  * bukan soal cerita, dengan bahasa yang mudah dipahami siswa.
- * Soal PG sengaja identik di Pre-Test & Post-Test agar skor bisa dibandingkan.
  * =========================================================================
  */
-const bankPG = [
+export const bankPreTestPG = [
   {
     nomor: 1,
     pertanyaan: 'Portofolio sering disebut sebagai "proof of work". Apa maksud sebenarnya?',
@@ -183,8 +182,84 @@ const bankPG = [
   },
 ]
 
-const buatSoalPG = (jenis) =>
-  bankPG.map((soal) => ({
+// Alias untuk kompatibilitas
+export const bankPG = bankPreTestPG
+
+/**
+ * =========================================================================
+ * BANK SOAL PILIHAN GANDA POST-TEST
+ * Nomor 1-5 dan 11-15 sama dengan Pre-Test.
+ * Nomor 6-10 disesuaikan dengan instrumen evaluasi materi mendalam
+ * (peran DOP/showreel, deskripsi video, durasi showreel, pembaruan, & custom domain).
+ * =========================================================================
+ */
+export const bankPostTestPG = [
+  // Nomor 1 s.d. 5 (sama dengan Pre-Test)
+  ...bankPreTestPG.slice(0, 5),
+
+  // Nomor 6 s.d. 10 (Revisi Instrumen Evaluasi Tambahan)
+  {
+    nomor: 6,
+    pertanyaan: 'Jika kamu melamar sebagai Penata Kamera (DOP / Cameraman), apa yang paling penting untuk ditonjolkan dalam web portofoliomu?',
+    opsi: {
+      A: 'Naskah skenario fiksi ilmiah yang panjang.',
+      B: 'Video showreel yang menampilkan komposisi gambar, pencahayaan, dan pergerakan kamera (camera movement) hasil rekamannya.',
+      C: 'Rekaman audio wawancara aktor tanpa gambar visual.',
+      D: 'Foto-foto selfie di lokasi syuting saat sedang istirahat.',
+    },
+    kunci_jawaban: 'B',
+  },
+  {
+    nomor: 7,
+    pertanyaan: 'Mengapa sangat penting untuk menambahkan teks deskripsi singkat (mencakup peran, alat, dan proses) di bawah video karya yang kita pamerkan?',
+    opsi: {
+      A: 'Agar halaman website terlihat penuh dengan tulisan dan tidak kosong.',
+      B: 'Untuk menjelaskan kontribusi spesifik kita dalam proyek tersebut, karena satu produksi video biasanya dikerjakan oleh tim (banyak orang).',
+      C: 'Agar video tersebut tidak bisa diunduh atau ditiru oleh pengunjung web.',
+      D: 'Sebagai syarat wajib dari Google Sites agar tombol publikasi bisa ditekan.',
+    },
+    kunci_jawaban: 'B',
+  },
+  {
+    nomor: 8,
+    pertanyaan: 'Saat merangkum karya ke dalam sebuah video showreel untuk portofolio, durasi ideal yang paling disarankan adalah...',
+    opsi: {
+      A: '1 hingga 2 menit, menampilkan bagian paling memukau tanpa bertele-tele.',
+      B: 'Lebih dari 30 menit, agar perekrut bisa menonton sambil bersantai.',
+      C: 'Hanya 5 detik per video agar ukuran file menjadi sangat kecil.',
+      D: 'Sama persis dengan durasi asli film panjang yang kita buat.',
+    },
+    kunci_jawaban: 'A',
+  },
+  {
+    nomor: 9,
+    pertanyaan: 'Kapan waktu yang paling tepat untuk memperbarui (update) isi web portofolio digitalmu?',
+    opsi: {
+      A: 'Hanya saat diminta oleh guru atau dosen untuk keperluan nilai tugas.',
+      B: 'Secara berkala setiap kali kamu menyelesaikan proyek baru yang kualitasnya lebih baik dan relevan.',
+      C: 'Menunggu sampai kamu akan mengirimkan surat lamaran kerja ke perusahaan impian.',
+      D: 'Tidak perlu diperbarui sama sekali jika sudah pernah dipublikasikan satu kali.',
+    },
+    kunci_jawaban: 'B',
+  },
+  {
+    nomor: 10,
+    pertanyaan: "Untuk meningkatkan kesan profesional pada web portofolio buatan Google Sites, banyak pembuat web menggunakan 'Custom Domain' (misalnya: namakamu.com). Apa keuntungan utamanya?",
+    opsi: {
+      A: 'Membuat website otomatis masuk ke halaman pertama mesin pencari Google.',
+      B: 'Alamat web menjadi lebih ringkas, mudah diingat, dan terlihat jauh lebih meyakinkan di mata perekrut (HRD).',
+      C: 'Mengubah tampilan Google Sites menjadi seperti aplikasi media sosial.',
+      D: 'Memblokir pengunjung yang menggunakan koneksi internet dari HP.',
+    },
+    kunci_jawaban: 'B',
+  },
+
+  // Nomor 11 s.d. 15 (sama dengan Pre-Test)
+  ...bankPreTestPG.slice(10, 15),
+]
+
+const buatSoalPG = (bank, jenis) =>
+  bank.map((soal) => ({
     nomor: soal.nomor,
     jenis_tes: jenis,
     kategori: 'Pilihan Ganda',
@@ -201,7 +276,7 @@ const buatSoalPG = (jenis) =>
  * Total: 20 Soal = 15 Pilihan Ganda (6 poin/soal) + 5 Praktik/Penilaian Diri (2 poin/soal) = 100 poin
  * =========================================================================
  */
-export const dataPreTestPG = buatSoalPG('Pre-Test')
+export const dataPreTestPG = buatSoalPG(bankPreTestPG, 'Pre-Test')
 
 export const dataPreTestPraktik = [
   {
@@ -260,7 +335,7 @@ export const dataSoalPreTest = [...dataPreTestPG, ...dataPreTestPraktik]
  * Total: 20 Soal = 15 Pilihan Ganda (6 poin/soal) + 5 Praktik/Penilaian Diri (2 poin/soal) = 100 poin
  * =========================================================================
  */
-export const dataPostTestPG = buatSoalPG('Post-Test')
+export const dataPostTestPG = buatSoalPG(bankPostTestPG, 'Post-Test')
 
 export const dataPostTestPraktik = [
   {
